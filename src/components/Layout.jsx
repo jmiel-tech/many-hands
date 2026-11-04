@@ -20,7 +20,9 @@ export default function Layout() {
 
   // Scroll to the top on a new page, but not when a dialog opens over the current one.
   const page = pathname.replace(/\/(tasks\/.*|edit|new)$/, '');
-  useEffect(() => window.scrollTo(0, 0), [page]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
 
   return (
     <div className="shell">

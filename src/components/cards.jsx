@@ -90,7 +90,9 @@ export function IssueCard({ issue, selected, tinted }) {
       <div className="bar" aria-hidden="true">
         <div style={{ width: `${percent}%`, background: BAR_COLOR[health.label] }} />
       </div>
-      <span className="muted">{health.assigned} of {health.total} {health.total === 1 ? 'task has' : 'tasks have'} someone</span>
+      <span className="muted">
+        {health.total ? `${health.assigned} of ${health.total} ${health.total === 1 ? 'task has' : 'tasks have'} someone` : 'No tasks yet'}
+      </span>
     </Link>
   );
 }
