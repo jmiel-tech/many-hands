@@ -21,9 +21,10 @@ export function groupTasks(tasks) {
   return groups;
 }
 
-export function healthSentence({ label, unassigned }) {
+export function healthSentence({ label, total, unassigned }) {
   if (label === 'Orphaned') return 'No tasks yet. Add the first one.';
   if (label === 'Covered') return 'Every task has someone.';
   const left = `${unassigned} still ${unassigned === 1 ? 'needs' : 'need'} a person.`;
-  return label === 'At risk' ? `Most tasks need someone. ${left}` : `Many tasks have someone. ${left}`;
+  if (label === 'At risk') return `Most tasks need someone. ${left}`;
+  return `${unassigned * 2 === total ? 'Half the' : 'Most'} tasks have someone. ${left}`;
 }
