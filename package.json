@@ -1,0 +1,28 @@
+{
+  "name": "many-hands",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/health.test.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-many-hands \"node --test tests/firestore.rules.test.js\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-many-hands",
+    "dev:emulator": "vite --mode emulator"
+  },
+  "dependencies": {
+    "firebase": "^13.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "firebase-tools": "^15.35.0",
+    "vite": "^8.3.5",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}
