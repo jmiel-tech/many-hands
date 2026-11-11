@@ -6,16 +6,20 @@ import { useAction } from '../lib/errors.js';
 import { updateIssue } from '../lib/api.js';
 import { Avatar, ErrorNote, FormHead, LockNote, Modal, firstName } from '../components/ui.jsx';
 
-export function EditorPicker({ people, selected, onToggle }) {
+export function EditorPicker({ people, selected, onToggle, everyone, onEveryone }) {
   return (
     <fieldset className="assign">
       <legend className="field-label">People who can edit</legend>
       <div className="assign-list">
+        <label className="assign-row">
+          <input type="checkbox" checked={everyone} onChange={(e) => onEveryone(e.target.checked)} />
+          <span className="assign-name">Everyone<small>All members, including anyone who joins later</small></span>
+        </label>
         {people.map((p) => (
           <label className="assign-row" key={p.id}>
-            <input type="checkbox" checked={selected.includes(p.id)} onChange={() => onToggle(p.id)} />
+            <input type="checkbox" checked={everyone || selected.includes(p.id)} disabled={everyone} onChange={() => onToggle(p.id)} />
             <Avatar id={p.id} name={p.name} size={34} />
-            <span className="assign-name">{p.name}{selected.includes(p.id) && <small>Can edit and add tasks</small>}</span>
+            <span className="assign-name">{p.name}{(everyone || selected.includes(p.id)) && <small>Can edit and add tasks</small>}</span>
           </label>
         ))}
       </div>
@@ -30,6 +34,7 @@ export default function IssueAccess() {
   const navigate = useNavigate();
   const issue = issues.find((i) => i.id === issueId);
   const [editorIds, setEditorIds] = useState(() => (issue?.editorIds || []).filter((id) => id !== issue?.ownerId));
+  const [everyone, setEveryone] = useState(issue?.editableByAll === true);
   const { busy, error, run } = useAction();
 
   const close = () => navigate(`/issues/${issueId}`);
@@ -49,7 +54,7 @@ export default function IssueAccess() {
   const submit = (e) => {
     e.preventDefault();
     run(async () => {
-      await updateIssue(issue.id, { editorIds: [issue.ownerId, ...editorIds] });
+      await updateIssue(issue.id, { editorIds: [issue.ownerId, ...editorIds], editableByAll: everyone });
       close();
     });
   };
@@ -58,11 +63,7 @@ export default function IssueAccess() {
     <Modal title="Edit access" onClose={close}>
       <FormHead title="Edit access." subtitle={`Choose who can edit "${issue.title}" and add tasks to it. Everyone can still read it.`} />
       <form className="form" aria-label="Edit access" onSubmit={submit}>
-        {others.length > 0 ? (
-          <EditorPicker people={others} selected={editorIds} onToggle={toggle} />
-        ) : (
-          <p className="note-box">No other members have joined yet.</p>
-        )}
+        <EditorPicker people={others} selected={editorIds} onToggle={toggle} everyone={everyone} onEveryone={setEveryone} />
         <p className="note-box">You're the owner, so you always have edit access and are the only one who can delete this issue or change who can edit it.</p>
         <ErrorNote>{error}</ErrorNote>
         <button type="submit" className="pill pill-lg" disabled={busy}>{busy ? 'Saving…' : 'Save access'}</button>
