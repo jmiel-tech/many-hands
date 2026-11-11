@@ -18,8 +18,8 @@ function HealthRing({ assigned, total }) {
   return (
     <div className="ring" role="img" aria-label={text}>
       <svg width="100%" height="100%" viewBox="0 0 200 200" aria-hidden="true">
-        <circle cx="100" cy="100" r="88" fill="none" stroke="#3a3a3c" strokeWidth="10" />
-        <circle cx="100" cy="100" r="88" fill="none" stroke="#7FD8B8" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${circumference}`} transform="rotate(-90 100 100)" />
+        <circle className="ring-track" cx="100" cy="100" r="88" fill="none" strokeWidth="10" />
+        <circle className="ring-fill" cx="100" cy="100" r="88" fill="none" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${circumference}`} transform="rotate(-90 100 100)" />
       </svg>
       <div className="ring-text">
         <span className="ring-number">{assigned}</span>

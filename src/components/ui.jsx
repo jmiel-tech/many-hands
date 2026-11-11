@@ -37,7 +37,7 @@ export const Icons = {
 export function Logo({ size = 26 }) {
   return (
     <span className="logo" style={{ width: size, height: size, borderRadius: size / 3.2 }} aria-hidden="true">
-      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="#F2C46B" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <path d="M7 11V6.5a1.5 1.5 0 0 1 3 0V10" />
         <path d="M10 10V5a1.5 1.5 0 0 1 3 0v5" />
         <path d="M13 10V6a1.5 1.5 0 0 1 3 0v7" />

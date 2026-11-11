@@ -4,11 +4,15 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
-import { Avatar, firstName } from '../components/ui.jsx';
+import { Avatar, Segmented, firstName } from '../components/ui.jsx';
+import { useTheme } from '../lib/theme.js';
 import { DetailRows } from './MemberProfile.jsx';
+
+const APPEARANCE = { system: 'System', light: 'Light', dark: 'Dark' };
 
 export default function Me() {
   const { user, member, logOut } = useAuth();
+  const [theme, setTheme] = useTheme();
   const { issues, tasks } = useData();
   const myIssues = issues.filter((i) => i.ownerId === user.uid);
   const myTasks = tasks.filter((t) => t.assigneeId === user.uid);
@@ -25,7 +29,10 @@ export default function Me() {
         </div>
       </section>
       <section className="band band-tight" aria-label="My details">
-        <div className="band-inner narrow"><DetailRows member={member} /></div>
+        <div className="band-inner narrow stack-md">
+          <DetailRows member={member} />
+          <Segmented label="Appearance" name="appearance" options={APPEARANCE} value={theme} onChange={setTheme} />
+        </div>
       </section>
       <section className="band band-alt" aria-labelledby="h-my-issues">
         <div className="band-inner stack-md">
