@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
-import { useData } from '../lib/data.jsx';
+import { useData, canEditIssue } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { groupTasks, healthSentence, issueHealth } from '../lib/health.js';
 import { deleteIssue } from '../lib/api.js';
@@ -68,6 +68,7 @@ export default function IssueDetail() {
   const health = issueHealth(tasks);
   const groups = groupTasks(tasks);
   const isOwner = issue.ownerId === user.uid;
+  const canEdit = canEditIssue(issue, user.uid);
   const ownerName = nameOf(issue.ownerId);
   const started = groups.doing.length + groups.done.length;
 
@@ -93,18 +94,18 @@ export default function IssueDetail() {
             <Avatar id={issue.ownerId} name={ownerName} size={28} />
             Owner: {isOwner ? 'you' : ownerName}
           </Link>
-          {!isOwner && <LockNote>Only {firstName(ownerName)} can edit this issue.</LockNote>}
+          {!canEdit && <LockNote>Only {firstName(ownerName)} and people they've given edit access can edit this issue or add tasks.</LockNote>}
         </div>
         <div className="hero-actions hero-actions-row">
-          <Link to={`/issues/${issue.id}/tasks/new`} className="pill">Add a task</Link>
+          {canEdit && <Link to={`/issues/${issue.id}/tasks/new`} className="pill">Add a task</Link>}
           {groups.unclaimed.length > 0 && (
             <button type="button" className="textlink" onClick={() => scrollTo('group-unclaimed')}>See what still needs someone<Icons.chevron /></button>
           )}
         </div>
-        {isOwner && !confirming && (
+        {canEdit && !confirming && (
           <div className="owner-actions">
             <Link to={`/issues/${issue.id}/edit`} className="textlink">Edit</Link>
-            <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>
+            {isOwner && <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>}
           </div>
         )}
         {isOwner && confirming && tasks.length > 0 && (

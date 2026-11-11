@@ -36,6 +36,7 @@ const issue = (ownerId, extra = {}) => ({
   description: 'Saturday',
   status: 'open',
   ownerId,
+  editorIds: [ownerId],
   createdAt: serverTimestamp(),
   ...extra,
 });
@@ -133,11 +134,33 @@ test('cannot create an issue owned by someone else', async () => {
 test('owner can update an issue', async () => {
   await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { status: 'resolved' }));
 });
-test('non-owner cannot update an issue', async () => {
+test('non-owner without edit access cannot update an issue', async () => {
   await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { status: 'resolved' }));
 });
 test('owner cannot change ownerId', async () => {
   await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { ownerId: 'bob' }));
+});
+test('owner can grant and revoke edit access', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice'] }));
+});
+test('owner cannot remove their own edit access', async () => {
+  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editorIds: ['bob'] }));
+});
+test('an editor can change issue content but not permissions, and cannot delete', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
+  });
+  const db = asUser('bob');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { status: 'resolved', title: 'Renamed' }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob', 'carol'] }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice'] }));
+  await assertFails(deleteDoc(doc(db, 'issues/issue1')));
+});
+test('issue must list the owner as an editor', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editorIds: [] })));
+  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editorIds: ['alice'] })));
 });
 test('issue validation: bad status and too-long title fail', async () => {
   const db = asUser('alice');
@@ -151,18 +174,27 @@ test('owner can delete an issue, non-owner cannot', async () => {
 });
 
 // ---- tasks ----
-test('any member can create a task on any issue, assigned to anyone or no one', async () => {
-  const db = asUser('bob');
-  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('bob', 'alice')));
-  await assertSucceeds(setDoc(doc(db, 'tasks/t2'), task('bob', null)));
+test('the owner can create a task on their issue, assigned to anyone or no one', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('alice', 'bob')));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t2'), task('alice', null)));
+});
+test('a user without edit access cannot create a task', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', null)));
+});
+test('an editor can create a task', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
+  });
+  await assertSucceeds(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', 'alice')));
 });
 test('createdBy must be the current user', async () => {
-  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('alice', null)));
+  await assertFails(setDoc(doc(asUser('alice'), 'tasks/t1'), task('bob', null)));
 });
 test('a task cannot point at a missing issue or a missing member', async () => {
-  const db = asUser('bob');
-  await assertFails(setDoc(doc(db, 'tasks/t1'), task('bob', null, { issueId: 'nope' })));
-  await assertFails(setDoc(doc(db, 'tasks/t1'), task('bob', 'ghost')));
+  const db = asUser('alice');
+  await assertFails(setDoc(doc(db, 'tasks/t1'), task('alice', null, { issueId: 'nope' })));
+  await assertFails(setDoc(doc(db, 'tasks/t1'), task('alice', 'ghost')));
 });
 test('assignee can edit, change status, and reassign', async () => {
   const db = asUser('alice');
