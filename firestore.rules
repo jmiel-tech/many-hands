@@ -30,6 +30,9 @@ service cloud.firestore {
     function memberExists(id) {
       return exists(/databases/$(database)/documents/members/$(id));
     }
+    function memberDoc(id) {
+      return get(/databases/$(database)/documents/members/$(id)).data;
+    }
     function adminId(id) {
       return exists(/databases/$(database)/documents/admins/$(id));
     }
@@ -56,10 +59,14 @@ service cloud.firestore {
     match /bans/{bannedUid} {
       // The removed person can read their own ban, so the app can tell them what happened.
       allow read: if isAdmin() || (signedIn() && bannedUid == uid());
+      // The ban keeps an exact copy of the profile, so lifting it can put the profile back.
       allow create: if isAdmin() && bannedUid != uid() && !adminId(bannedUid)
-        && hasExactly(['name', 'email', 'bannedBy', 'createdAt'])
-        && isText(incoming().name, 0, 80)
-        && isText(incoming().email, 0, 254)
+        && hasExactly(['name', 'email', 'phone', 'memberCreatedAt', 'bannedBy', 'createdAt'])
+        && memberExists(bannedUid)
+        && incoming().name == memberDoc(bannedUid).name
+        && incoming().email == memberDoc(bannedUid).email
+        && incoming().phone == memberDoc(bannedUid).phone
+        && incoming().memberCreatedAt == memberDoc(bannedUid).createdAt
         && incoming().bannedBy == uid()
         && createdNow();
       allow delete: if isAdmin();
@@ -81,6 +88,14 @@ service cloud.firestore {
         && incoming().email == request.auth.token.email;
       allow update: if active() && memberId == uid() && validMember() && unchanged('createdAt')
         && (unchanged('email') || incoming().email == request.auth.token.email);
+      // An admin lifting a ban restores the saved profile in the same batch that deletes the ban.
+      allow create: if isAdmin() && memberId != uid() && bannedId(memberId)
+        && !existsAfter(/databases/$(database)/documents/bans/$(memberId))
+        && hasExactly(['name', 'email', 'phone', 'createdAt'])
+        && incoming().name == get(/databases/$(database)/documents/bans/$(memberId)).data.name
+        && incoming().email == get(/databases/$(database)/documents/bans/$(memberId)).data.email
+        && incoming().phone == get(/databases/$(database)/documents/bans/$(memberId)).data.phone
+        && incoming().createdAt == get(/databases/$(database)/documents/bans/$(memberId)).data.memberCreatedAt;
       // An admin removing someone deletes their profile. Admins can't remove each other.
       allow delete: if active() && (memberId == uid() || (isAdmin() && !adminId(memberId)));
     }

@@ -73,7 +73,7 @@ function BanRow({ ban }) {
         </span>
       </div>
       <div className="admin-row-actions">
-        <button type="button" className="textlink" disabled={busy} onClick={() => run(() => unbanMember(ban.id))}>
+        <button type="button" className="textlink" disabled={busy} onClick={() => run(() => unbanMember(ban))}>
           {busy ? 'Letting back in…' : 'Let back in'}
         </button>
       </div>

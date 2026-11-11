@@ -248,7 +248,9 @@ test('author can delete a comment, non-author cannot', async () => {
 });
 
 // ---- admins ----
-const ban = (by, extra = {}) => ({ name: 'Alice', email: 'alice@example.com', bannedBy: by, createdAt: serverTimestamp(), ...extra });
+// A ban must hold an exact copy of the member's profile (alice's seeded profile here).
+const ban = (by, extra = {}) => ({ name: 'alice', email: 'alice@example.com', phone: '555-0100', memberCreatedAt: when, bannedBy: by, createdAt: serverTimestamp(), ...extra });
+const savedBan = { name: 'alice', email: 'alice@example.com', phone: '555-0100', memberCreatedAt: when, bannedBy: 'root', createdAt: when };
 
 test('nobody can make themselves an admin from the app', async () => {
   await assertFails(setDoc(doc(asUser('bob'), 'admins/bob'), {}));
@@ -302,7 +304,7 @@ test('ban list is readable by admins and by the banned person only', async () =>
 // ---- banned members ----
 test('a banned member is locked out of reading and writing everything', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
-    await setDoc(doc(ctx.firestore(), 'bans/alice'), { name: 'Alice', email: 'alice@example.com', bannedBy: 'root', createdAt: when });
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
   });
   const db = asUser('alice');
   for (const path of ['members/bob', 'issues/issue1', 'tasks/open', 'comments/comment1']) {
@@ -319,15 +321,61 @@ test('a banned member is locked out of reading and writing everything', async ()
 test('a banned member cannot sign up again with a fresh profile', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await deleteDoc(doc(ctx.firestore(), 'members/alice'));
-    await setDoc(doc(ctx.firestore(), 'bans/alice'), { name: 'Alice', email: 'alice@example.com', bannedBy: 'root', createdAt: when });
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
   });
   await assertFails(setDoc(doc(asUser('alice'), 'members/alice'), member('alice')));
 });
 test('after an admin lifts the ban, the member can set up a profile again', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await deleteDoc(doc(ctx.firestore(), 'members/alice'));
-    await setDoc(doc(ctx.firestore(), 'bans/alice'), { name: 'Alice', email: 'alice@example.com', bannedBy: 'root', createdAt: when });
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
   });
   await assertSucceeds(deleteDoc(doc(asUser('root'), 'bans/alice')));
   await assertSucceeds(setDoc(doc(asUser('alice'), 'members/alice'), member('alice')));
+});
+
+// ---- letting someone back in ----
+const restored = { name: 'alice', email: 'alice@example.com', phone: '555-0100', createdAt: when };
+async function seedKickedAlice() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'members/alice'));
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+}
+
+test('kicking must save an exact copy of the profile in the ban', async () => {
+  const db = asUser('root');
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('root', { phone: '555-9999' })));
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('root', { name: 'Someone else' })));
+  await assertFails(setDoc(doc(db, 'bans/carol'), ban('root', { name: 'carol', email: 'carol@example.com' })));
+});
+test('admin lets a member back in: ban lifted and profile restored in one batch', async () => {
+  await seedKickedAlice();
+  const db = asUser('root');
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), restored);
+  await assertSucceeds(batch.commit());
+  const snap = await getDoc(doc(asUser('bob'), 'members/alice'));
+  if (snap.data().phone !== '555-0100') throw new Error('profile not restored');
+});
+test('admin cannot restore a profile without lifting the ban, or with changed details', async () => {
+  await seedKickedAlice();
+  const db = asUser('root');
+  await assertFails(setDoc(doc(db, 'members/alice'), restored));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), { ...restored, phone: '555-9999' });
+  await assertFails(batch.commit());
+});
+test('non-admin cannot let someone back in', async () => {
+  await seedKickedAlice();
+  const db = asUser('bob');
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), restored);
+  await assertFails(batch.commit());
+});
+test('admin cannot create a profile for someone who was never banned', async () => {
+  await assertFails(setDoc(doc(asUser('root'), 'members/carol'), { name: 'carol', email: 'carol@example.com', phone: '555-0100', createdAt: when }));
 });

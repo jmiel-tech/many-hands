@@ -125,6 +125,8 @@ export async function kickMember(adminUid, member, heldTaskIds) {
   batch.set(doc(db, 'bans', member.id), {
     name: member.name,
     email: member.email,
+    phone: member.phone,
+    memberCreatedAt: member.createdAt,
     bannedBy: adminUid,
     createdAt: serverTimestamp(),
   });
@@ -133,8 +135,20 @@ export async function kickMember(adminUid, member, heldTaskIds) {
   await batch.commit();
 }
 
-// Lets a removed person back in. They set up their profile again the next time they log in.
-export async function unbanMember(uid) {
+// Lets a removed person back in and puts their profile back exactly as it was.
+// Their old tasks stay Unclaimed: someone else may have taken them since.
+export async function unbanMember(ban) {
   requireOnline();
-  await deleteDoc(doc(db, 'bans', uid));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans', ban.id));
+  // Bans made before profiles were saved have no phone. Those people fill in their profile on next login.
+  if (ban.phone) {
+    batch.set(doc(db, 'members', ban.id), {
+      name: ban.name,
+      email: ban.email,
+      phone: ban.phone,
+      createdAt: ban.memberCreatedAt,
+    });
+  }
+  await batch.commit();
 }

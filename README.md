@@ -92,7 +92,7 @@ Admins get an **Admin** tab where they can kick members and edit or delete any i
 
 To remove an admin, delete their document from `admins`.
 
-**What kicking does:** it adds the person to `bans`, deletes their profile, and puts their tasks back to Unclaimed. Their login still exists, but the rules refuse everything they try and the app tells them they've been removed. An admin can undo this from **Admin > Removed > Let back in**. To delete the login itself, use **Authentication > Users** in the console.
+**What kicking does:** it adds the person to `bans`, deletes their profile, and puts their tasks back to Unclaimed. Their login still exists, but the rules refuse everything they try and the app tells them they've been removed. An admin can undo this from **Admin > Removed > Let back in**, which puts their profile back as it was. Their old tasks stay Unclaimed. To delete the login itself, use **Authentication > Users** in the console.
 
 ## Run the tests
 
@@ -145,7 +145,7 @@ npm run preview
 | `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
 | `admins/{uid}` | No fields needed. Added in the console only. |
-| `bans/{uid}` | `name`, `email`, `bannedBy`, `createdAt` |
+| `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
 
 ## Known limitation
 
