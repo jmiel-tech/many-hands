@@ -6,7 +6,9 @@ const DataContext = createContext(null);
 export const useData = () => useContext(DataContext);
 
 // Everyone can read an issue; the owner and anyone the owner granted can edit it and add tasks.
-export const canEditIssue = (issue, uid) => Boolean(issue) && (issue.ownerId === uid || (issue.editorIds || []).includes(uid));
+// Everyone can read an issue; the owner, anyone the owner granted, or everyone if editableByAll, can edit it and add tasks.
+export const canEditIssue = (issue, uid) => Boolean(issue)
+  && (issue.ownerId === uid || issue.editableByAll === true || (issue.editorIds || []).includes(uid));
 
 const createdMillis = (item) => item.createdAt?.toMillis?.() ?? Date.now();
 const oldestFirst = (a, b) => createdMillis(a) - createdMillis(b);
