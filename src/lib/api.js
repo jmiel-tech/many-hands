@@ -26,7 +26,7 @@ export async function updateMember(uid, patch) {
   await updateDoc(doc(db, 'members', uid), patch);
 }
 
-export async function createIssue(uid, { title, description, status, dueDate, editorIds }) {
+export async function createIssue(uid, { title, description, status, dueDate, editorIds, editableByAll }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'issues'), {
     title,
@@ -35,6 +35,7 @@ export async function createIssue(uid, { title, description, status, dueDate, ed
     dueDate: dueDate || null,
     ownerId: uid,
     editorIds,
+    editableByAll: Boolean(editableByAll),
     createdAt: serverTimestamp(),
   });
   return ref.id;
