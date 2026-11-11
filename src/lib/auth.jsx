@@ -20,12 +20,16 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = still loading, null = signed out
   const [member, setMember] = useState(undefined); // undefined = still loading, null = no doc
+  const [banned, setBanned] = useState(undefined); // undefined = still loading
+  const [isAdmin, setIsAdmin] = useState(false);
   const signingUp = useRef(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
+  // Wait until we know the user isn't removed: the rules refuse a removed person's reads,
+  // and a refused listener stops for good, so it has to start again after a ban is lifted.
   useEffect(() => {
-    if (!user) {
+    if (!user || banned !== false) {
       setMember(undefined);
       return undefined;
     }
@@ -43,12 +47,41 @@ export function AuthProvider({ children }) {
       },
       (error) => console.error(error),
     );
+  }, [user, banned]);
+
+  // Admins live in admins/{uid}, set up in the Firebase console. Bans live in bans/{uid}.
+  useEffect(() => {
+    if (!user) {
+      setBanned(undefined);
+      setIsAdmin(false);
+      return undefined;
+    }
+    const stopBan = onSnapshot(
+      doc(db, 'bans', user.uid),
+      (snap) => setBanned(snap.exists()),
+      (error) => {
+        console.error(error);
+        setBanned(false);
+      },
+    );
+    const stopAdmin = onSnapshot(
+      doc(db, 'admins', user.uid),
+      (snap) => setIsAdmin(snap.exists()),
+      // A removed person can't read this, and that's fine: they aren't an admin.
+      () => setIsAdmin(false),
+    );
+    return () => {
+      stopBan();
+      stopAdmin();
+    };
   }, [user]);
 
   const value = useMemo(
     () => ({
       user,
       member,
+      banned,
+      isAdmin,
       async logIn(email, password) {
         await signInWithEmailAndPassword(auth, email, password);
       },
@@ -88,7 +121,7 @@ export function AuthProvider({ children }) {
         window.location.reload();
       },
     }),
-    [user, member],
+    [user, member, banned, isAdmin],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

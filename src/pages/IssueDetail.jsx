@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData, canEditIssue } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { groupTasks, healthSentence, issueHealth } from '../lib/health.js';
-import { deleteIssue } from '../lib/api.js';
+import { adminDeleteIssue, deleteIssue } from '../lib/api.js';
 import { TopBar } from '../components/Layout.jsx';
 import { HeldTaskCard, OpenTaskCard } from '../components/cards.jsx';
 import { Avatar, ConfirmRow, DueBadge, ErrorNote, HealthBadge, Icons, LockNote, StatusBadge, firstName } from '../components/ui.jsx';
@@ -47,7 +47,7 @@ function Group({ id, title, chip, tasks, empty, open }) {
 
 export default function IssueDetail() {
   const { issueId } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { issues, tasksFor, nameOf } = useData();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -69,12 +69,17 @@ export default function IssueDetail() {
   const groups = groupTasks(tasks);
   const isOwner = issue.ownerId === user.uid;
   const canEdit = canEditIssue(issue, user.uid);
+  // Admins can edit and delete any issue, on top of the owner and people with edit access.
+  const canManage = canEdit || isAdmin;
+  const canDelete = isOwner || isAdmin;
   const ownerName = nameOf(issue.ownerId);
   const started = groups.doing.length + groups.done.length;
 
   const askDelete = () => setConfirming(true);
   const doDelete = () => run(async () => {
-    await deleteIssue(issue.id);
+    // Admins delete the issue's tasks along with it. Owners have to clear the tasks first.
+    if (isAdmin) await adminDeleteIssue(issue.id, tasks.map((t) => t.id));
+    else await deleteIssue(issue.id);
     navigate('/issues');
   });
 
@@ -96,7 +101,8 @@ export default function IssueDetail() {
             Owner: {isOwner ? 'you' : ownerName}
           </Link>
           {isOwner && <Link to={`/issues/${issue.id}/access`} className="pill pill-plain pill-sm">Edit access…</Link>}
-          {!canEdit && <LockNote>Only {firstName(ownerName)} and people they've given edit access can edit this issue or add tasks.</LockNote>}
+          {!canEdit && !isAdmin && <LockNote>Only {firstName(ownerName)} and people they've given edit access can edit this issue or add tasks.</LockNote>}
+          {!canEdit && isAdmin && <span className="admin-note"><Icons.admin width="16" height="16" />You can edit or delete this as an admin.</span>}
         </div>
         <div className="hero-actions hero-actions-row">
           {canEdit && <Link to={`/issues/${issue.id}/tasks/new`} className="pill">Add a task</Link>}
@@ -104,21 +110,26 @@ export default function IssueDetail() {
             <button type="button" className="textlink" onClick={() => scrollTo('group-unclaimed')}>See what still needs someone<Icons.chevron /></button>
           )}
         </div>
-        {canEdit && !confirming && (
+        {canManage && !confirming && (
           <div className="owner-actions">
             <Link to={`/issues/${issue.id}/edit`} className="textlink">Edit</Link>
-            {isOwner && <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>}
+            {canDelete && <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>}
           </div>
         )}
-        {isOwner && confirming && tasks.length > 0 && (
+        {isOwner && !isAdmin && confirming && tasks.length > 0 && (
           <div role="alert" className="blocked">
             <strong>This issue still has {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}.</strong>
             <span>Delete its tasks first. Only a task's assignee can delete it, so take any unclaimed ones or ask the people holding them.</span>
             <button type="button" className="pill pill-plain pill-sm" onClick={() => setConfirming(false)}>OK</button>
           </div>
         )}
-        {isOwner && confirming && tasks.length === 0 && (
-          <ConfirmRow question="Delete this issue for everyone?" busy={busy} onConfirm={doDelete} onCancel={() => setConfirming(false)} />
+        {(isAdmin || tasks.length === 0) && confirming && (
+          <ConfirmRow
+            question={tasks.length ? `Delete this issue and its ${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'} for everyone?` : 'Delete this issue for everyone?'}
+            busy={busy}
+            onConfirm={doDelete}
+            onCancel={() => setConfirming(false)}
+          />
         )}
         <ErrorNote>{error}</ErrorNote>
       </section>

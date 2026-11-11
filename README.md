@@ -82,6 +82,18 @@ To confirm the server enforces this, and not only the UI, run the rules tests in
 
 Also confirm that the browser offers to install the app, and that it still opens with the network turned off once you've visited it.
 
+### 7. Make yourself an admin
+
+Admins get an **Admin** tab where they can kick members and edit or delete any issue. For safety, admins can only be added in the Firebase console, never from the app.
+
+1. In the Firebase console, open **Authentication > Users** and copy the person's **User UID**.
+2. Open **Firestore Database > Data**, click **Start collection**, and name it `admins`.
+3. Use the UID as the **Document ID**. The document needs no fields, so add one throwaway field if the console insists (for example `note` = `admin`).
+
+To remove an admin, delete their document from `admins`.
+
+**What kicking does:** it adds the person to `bans`, deletes their profile, and puts their tasks back to Unclaimed. Their login still exists, but the rules refuse everything they try and the app tells them they've been removed. An admin can undo this from **Admin > Removed > Let back in**, which puts their profile back as it was. Their old tasks stay Unclaimed. To delete the login itself, use **Authentication > Users** in the console.
+
 ## Run the tests
 
 The rules tests need Java 21 or newer for the Firebase emulator. The first run downloads the emulator.
@@ -132,6 +144,8 @@ npm run preview
 | `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `editorIds` (uids with edit access, always includes the owner), `createdAt` |
 | `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
+| `admins/{uid}` | No fields needed. Added in the console only. |
+| `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
 
 ## Known limitation
 

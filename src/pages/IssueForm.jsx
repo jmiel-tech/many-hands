@@ -9,7 +9,7 @@ import { Avatar, ErrorNote, FormHead, ISSUE_STATUS, LockNote, Modal, Segmented, 
 
 export default function IssueForm() {
   const { issueId } = useParams();
-  const { user, member } = useAuth();
+  const { user, member, isAdmin } = useAuth();
   const { issues, members, nameOf } = useData();
   const navigate = useNavigate();
   const issue = issues.find((i) => i.id === issueId);
@@ -24,7 +24,9 @@ export default function IssueForm() {
 
   const close = () => navigate(isEdit ? `/issues/${issueId}` : '/issues');
 
-  if (isEdit && !canEditIssue(issue, user.uid)) {
+  // Admins can edit any issue's content. Only the owner can change who has edit access.
+  const isEditor = isEdit && canEditIssue(issue, user.uid);
+  if (isEdit && (!issue || (!isEditor && !isAdmin))) {
     return (
       <Modal title="Edit issue" onClose={close}>
         <FormHead title="Not yours to edit." />
@@ -55,7 +57,10 @@ export default function IssueForm() {
     <Modal title={isEdit ? 'Edit issue' : 'New issue'} onClose={close}>
       <FormHead
         title={isEdit ? 'Edit issue.' : 'New issue.'}
-        subtitle={isEdit ? (isOwner ? "You started this one, so it's yours to change." : 'The owner gave you edit access to this one.') : 'Start something the group can pitch in on.'}
+        subtitle={!isEdit ? 'Start something the group can pitch in on.'
+          : isOwner ? "You started this one, so it's yours to change."
+          : isEditor ? 'The owner gave you edit access to this one.'
+          : `You're editing ${firstName(nameOf(issue.ownerId))}'s issue as an admin.`}
       />
       <form className="form" aria-label={isEdit ? 'Edit issue' : 'New issue'} onSubmit={submit}>
         <label className="lbl">Title
