@@ -3,7 +3,7 @@ import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useAction } from '../lib/errors.js';
 import { saveNewMember } from '../lib/api.js';
-import { ErrorNote, FormHead, Logo } from '../components/ui.jsx';
+import { ErrorNote, FormHead, Logo, PhoneInput } from '../components/ui.jsx';
 
 export default function AuthPage() {
   const { logIn, signUp, resetPassword } = useAuth();
@@ -74,9 +74,7 @@ export default function AuthPage() {
             <input className="field" type="email" autoComplete="email" maxLength={254} {...field('email')} />
           </label>
           {!isLogin && (
-            <label className="lbl">Phone
-              <input className="field" type="tel" autoComplete="tel" maxLength={30} {...field('phone')} />
-            </label>
+            <PhoneInput value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
           )}
           <label className="lbl">Password
             <input className="field" type="password" autoComplete={isLogin ? 'current-password' : 'new-password'} {...field('password')} />
@@ -121,9 +119,7 @@ export function FinishProfile() {
           <label className="lbl">Your name
             <input className="field" type="text" autoComplete="name" maxLength={80} required value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-          <label className="lbl">Phone
-            <input className="field" type="tel" autoComplete="tel" maxLength={30} required value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </label>
+          <PhoneInput value={phone} onChange={setPhone} />
           <ErrorNote>{error}</ErrorNote>
           <button type="submit" className="pill pill-lg" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           <button type="button" className="textlink center muted-link" onClick={logOut}>Log out</button>

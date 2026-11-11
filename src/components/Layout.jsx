@@ -2,19 +2,24 @@ import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useData, useOnline } from '../lib/data.jsx';
+import { useTheme } from '../lib/theme.jsx';
 import AssistantMount from '../assistant/index.jsx';
 import { Avatar, Icons, Loading, Logo } from './ui.jsx';
 
 const LINKS = [
   { to: '/', label: 'Home', icon: Icons.home, end: true },
   { to: '/issues', label: 'Issues', icon: Icons.issues },
+  { to: '/calendar', label: 'Calendar', icon: Icons.calendar },
   { to: '/members', label: 'Members', icon: Icons.members },
   { to: '/me', label: 'Me', icon: Icons.me },
 ];
+const ADMIN_LINK = { to: '/admin', label: 'Admin', icon: Icons.admin };
 
 // One <nav>: a bottom bar under 900px, a left sidebar from 900px up.
 export default function Layout() {
-  const { member } = useAuth();
+  const { member, isAdmin } = useAuth();
+  const { dark, toggle } = useTheme();
+  const links = isAdmin ? [...LINKS, ADMIN_LINK] : LINKS;
   const { loading } = useData();
   const online = useOnline();
   const { pathname } = useLocation();
@@ -33,14 +38,18 @@ export default function Layout() {
           <Logo size={30} />
           Many Hands
         </NavLink>
-        <nav aria-label="Main" className="nav-links">
-          {LINKS.map(({ to, label, icon: Icon, end }) => (
+        <nav aria-label="Main" className="nav-links" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
+          {links.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className="nav-link">
               <Icon />
               {label}
             </NavLink>
           ))}
         </nav>
+        <button type="button" className="sidebar-theme" role="switch" aria-checked={dark} onClick={toggle}>
+          {dark ? <Icons.sun /> : <Icons.moon />}
+          {dark ? 'Light mode' : 'Dark mode'}
+        </button>
         {member && (
           <NavLink to="/me" className="sidebar-me">
             <Avatar id={member.id} name={member.name} size={32} />

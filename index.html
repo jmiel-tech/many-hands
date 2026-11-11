@@ -3,12 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#1F5E4E" />
     <meta name="description" content="Many Hands helps a community see which tasks still need someone." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Many Hands</title>
+    <script>
+      // Set the theme before first paint. src/lib/theme.js keeps it in sync after that.
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('many-hands-theme'); } catch (e) {}
+        if (t !== 'dark' && t !== 'light') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121214');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

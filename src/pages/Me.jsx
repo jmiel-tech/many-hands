@@ -4,14 +4,17 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
-import { Avatar, firstName } from '../components/ui.jsx';
+import { Avatar, Icons, ThemeSwitch, firstName } from '../components/ui.jsx';
+import { useTheme } from '../lib/theme.jsx';
 import { DetailRows } from './MemberProfile.jsx';
+import { bySoonestDue } from '../lib/dates.js';
 
 export default function Me() {
-  const { user, member, logOut } = useAuth();
+  const { user, member, isAdmin, logOut } = useAuth();
+  const { dark, toggle } = useTheme();
   const { issues, tasks } = useData();
   const myIssues = issues.filter((i) => i.ownerId === user.uid);
-  const myTasks = tasks.filter((t) => t.assigneeId === user.uid);
+  const myTasks = tasks.filter((t) => t.assigneeId === user.uid).sort(bySoonestDue);
 
   return (
     <>
@@ -27,6 +30,8 @@ export default function Me() {
       <section className="band band-tight" aria-label="My details">
         <div className="band-inner narrow stack-md">
           <DetailRows member={member} />
+          <ThemeSwitch dark={dark} onToggle={toggle} />
+          {isAdmin && <Link to="/admin" className="textlink center">Open the admin page<Icons.chevron /></Link>}
         </div>
       </section>
       <section className="band band-alt" aria-labelledby="h-my-issues">

@@ -5,13 +5,15 @@ import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
 import { Avatar, Icons, LockNote, firstName } from '../components/ui.jsx';
+import { bySoonestDue } from '../lib/dates.js';
+import { displayPhone, phoneHref } from '../lib/phone.js';
 
 export function DetailRows({ member }) {
   return (
     <div className="detail-rows">
       <div><span>Name</span><span>{member.name}</span></div>
       <div><span>Email</span><a href={`mailto:${member.email}`}>{member.email}</a></div>
-      <div><span>Phone</span><a href={`tel:${member.phone}`}>{member.phone}</a></div>
+      <div><span>Phone</span><a href={phoneHref(member.phone)}>{displayPhone(member.phone)}</a></div>
     </div>
   );
 }
@@ -34,7 +36,7 @@ export default function MemberProfile() {
 
   const first = firstName(member.name);
   const theirIssues = issues.filter((i) => i.ownerId === member.id);
-  const theirTasks = tasks.filter((t) => t.assigneeId === member.id);
+  const theirTasks = tasks.filter((t) => t.assigneeId === member.id).sort(bySoonestDue);
 
   return (
     <>

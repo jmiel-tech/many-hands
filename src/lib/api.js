@@ -6,6 +6,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
@@ -26,12 +27,13 @@ export async function updateMember(uid, patch) {
   await updateDoc(doc(db, 'members', uid), patch);
 }
 
-export async function createIssue(uid, { title, description, status }) {
+export async function createIssue(uid, { title, description, status, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'issues'), {
     title,
     description,
     status,
+    dueDate: dueDate || null,
     ownerId: uid,
     createdAt: serverTimestamp(),
   });
@@ -48,7 +50,7 @@ export async function deleteIssue(id) {
   await deleteDoc(doc(db, 'issues', id));
 }
 
-export async function createTask(uid, { issueId, title, description, status, assigneeId }) {
+export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'tasks'), {
     issueId,
@@ -56,6 +58,7 @@ export async function createTask(uid, { issueId, title, description, status, ass
     description,
     status,
     assigneeId,
+    dueDate: dueDate || null,
     createdBy: uid,
     createdAt: serverTimestamp(),
   });
@@ -104,4 +107,51 @@ export async function updateComment(id, text) {
 export async function deleteComment(id) {
   requireOnline();
   await deleteDoc(doc(db, 'comments', id));
+}
+
+// ---- Admin ----
+
+// Deletes an issue and every task on it in one go. Only admins may delete tasks they don't hold.
+export async function adminDeleteIssue(issueId, taskIds) {
+  requireOnline();
+  const batch = writeBatch(db);
+  taskIds.forEach((id) => batch.delete(doc(db, 'tasks', id)));
+  batch.delete(doc(db, 'issues', issueId));
+  await batch.commit();
+}
+
+// Removes a member: records the ban, deletes their profile, and frees the tasks they held.
+// Their login still exists, but the rules refuse everything they try while the ban is in place.
+export async function kickMember(adminUid, member, heldTaskIds) {
+  requireOnline();
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'bans', member.id), {
+    name: member.name,
+    email: member.email,
+    phone: member.phone,
+    memberCreatedAt: member.createdAt,
+    bannedBy: adminUid,
+    createdAt: serverTimestamp(),
+  });
+  heldTaskIds.forEach((id) => batch.update(doc(db, 'tasks', id), { assigneeId: null }));
+  batch.delete(doc(db, 'members', member.id));
+  await batch.commit();
+}
+
+// Lets a removed person back in and puts their profile back exactly as it was.
+// Their old tasks stay Unclaimed: someone else may have taken them since.
+export async function unbanMember(ban) {
+  requireOnline();
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans', ban.id));
+  // Bans made before profiles were saved have no phone. Those people fill in their profile on next login.
+  if (ban.phone) {
+    batch.set(doc(db, 'members', ban.id), {
+      name: ban.name,
+      email: ban.email,
+      phone: ban.phone,
+      createdAt: ban.memberCreatedAt,
+    });
+  }
+  await batch.commit();
 }
