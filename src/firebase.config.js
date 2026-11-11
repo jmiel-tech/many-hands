@@ -15,4 +15,4 @@ export const firebaseConfig = {
 };
 
 // Shown as a small label at the top of screens in the design. Change it to your group's name.
-export const COMMUNITY_NAME = 'Eastside Community Food Bank';
+export const COMMUNITY_NAME = 'My Community';
