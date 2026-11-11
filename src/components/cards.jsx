@@ -32,7 +32,7 @@ export function OpenTaskCard({ task, issueTitle, large }) {
       {task.description && <p className="clamp muted">{task.description}</p>}
       <div className="task-card-foot">
         <StatusBadge status={task.status} />
-        <DueBadge task={task} />
+        <DueBadge item={task} />
         <span className="muted-sm">No one yet</span>
         <TakeButton taskId={task.id} />
       </div>
@@ -52,7 +52,7 @@ export function HeldTaskCard({ task }) {
         <h3><Link to={taskPath(task)} className="stretched">{task.title}</Link></h3>
         {mine ? <span className="badge tone-accent">Yours</span> : <StatusBadge status={task.status} />}
       </div>
-      <DueBadge task={task} />
+      <DueBadge item={task} />
       {mine ? (
         <>
           <span className="muted">{TASK_LABEL[task.status]}</span>
@@ -89,6 +89,7 @@ export function IssueCard({ issue, selected, tinted }) {
         </div>
         <HealthBadge label={health.label} />
       </div>
+      <DueBadge item={issue} />
       <div className="bar" aria-hidden="true">
         <div style={{ width: `${percent}%`, background: BAR_COLOR[health.label] }} />
       </div>
@@ -109,7 +110,7 @@ export function MyTaskCard({ task }) {
         <StatusBadge status={task.status} />
       </div>
       <span className="muted">{issue?.title || 'Issue removed'}</span>
-      <DueBadge task={task} />
+      <DueBadge item={task} />
     </Link>
   );
 }

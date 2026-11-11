@@ -14,8 +14,11 @@ function parseLocal(iso) {
   return new Date(y, m - 1, d);
 }
 
-export function isOverdue(task, now = new Date()) {
-  return Boolean(task.dueDate) && task.dueDate < todayISO(now) && task.status !== 'done';
+// Works for tasks and issues: a done task or a resolved issue is never overdue.
+const FINISHED = new Set(['done', 'resolved']);
+
+export function isOverdue(item, now = new Date()) {
+  return Boolean(item.dueDate) && item.dueDate < todayISO(now) && !FINISHED.has(item.status);
 }
 
 export function formatDue(iso, now = new Date()) {

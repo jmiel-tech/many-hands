@@ -101,10 +101,11 @@ export function StatusBadge({ status }) {
 }
 
 // The text says "Overdue", so the warning never depends on color alone.
-export function DueBadge({ task }) {
-  if (!task.dueDate) return null;
-  const when = formatDue(task.dueDate);
-  return isOverdue(task)
+// Takes a task or an issue.
+export function DueBadge({ item }) {
+  if (!item.dueDate) return null;
+  const when = formatDue(item.dueDate);
+  return isOverdue(item)
     ? <span className="badge badge-due tone-risk">Overdue · {when}</span>
     : <span className="badge badge-due tone-todo">Due {when}</span>;
 }

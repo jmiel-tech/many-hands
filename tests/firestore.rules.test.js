@@ -145,6 +145,23 @@ test('issue validation: bad status and too-long title fail', async () => {
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { title: 'x'.repeat(121) }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { title: '' }));
 });
+test('issue dueDate: can be created with a date or null; malformed values fail', async () => {
+  const db = asUser('bob');
+  await assertSucceeds(setDoc(doc(db, 'issues/i1'), issue('bob', { dueDate: '2026-11-15' })));
+  await assertSucceeds(setDoc(doc(db, 'issues/i2'), issue('bob', { dueDate: null })));
+  await assertFails(setDoc(doc(db, 'issues/i3'), issue('bob', { dueDate: 'Nov 15' })));
+  await assertFails(setDoc(doc(db, 'issues/i4'), issue('bob', { dueDate: when })));
+});
+test('issue dueDate: an issue without it can still be updated, and the owner can set and clear it', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { status: 'in_progress' }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: '2026-11-15' }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: null }));
+});
+test('issue dueDate: a non-owner cannot set it, and unknown fields still fail', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { dueDate: '2026-11-15' }));
+  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { priority: 'high' }));
+});
 test('owner can delete an issue, non-owner cannot', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'issues/issue1')));
   await assertSucceeds(deleteDoc(doc(asUser('alice'), 'issues/issue1')));

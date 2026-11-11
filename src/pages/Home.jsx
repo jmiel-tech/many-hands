@@ -21,7 +21,7 @@ export default function Home() {
   const part = timeOfDay(now);
   const weekday = now.toLocaleDateString([], { weekday: 'long' });
 
-  const active = issues.filter((i) => i.status !== 'resolved');
+  const active = issues.filter((i) => i.status !== 'resolved').sort(bySoonestDue);
   const issueTitle = (id) => issues.find((i) => i.id === id)?.title;
   // Skips tasks left behind by a deleted issue, since nobody can open those.
   const open = tasks.filter((t) => t.status === 'todo' && !t.assigneeId && issueTitle(t.issueId)).sort(bySoonestDue);

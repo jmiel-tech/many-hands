@@ -37,6 +37,12 @@ test('isOverdue: false when done, due today or later, or undated', () => {
   assert.equal(isOverdue({ status: 'todo' }, now), false);
 });
 
+test('isOverdue: issues are overdue until resolved', () => {
+  assert.equal(isOverdue({ dueDate: '2026-11-10', status: 'open' }, now), true);
+  assert.equal(isOverdue({ dueDate: '2026-11-10', status: 'in_progress' }, now), true);
+  assert.equal(isOverdue({ dueDate: '2026-11-10', status: 'resolved' }, now), false);
+});
+
 test('bySoonestDue puts dated tasks first, soonest first, and keeps undated order', () => {
   const tasks = [
     { id: 'a' },

@@ -16,6 +16,7 @@ export default function IssueForm() {
   const [title, setTitle] = useState(issue?.title || '');
   const [description, setDescription] = useState(issue?.description || '');
   const [status, setStatus] = useState(issue?.status || 'open');
+  const [dueDate, setDueDate] = useState(issue?.dueDate || '');
   const { busy, error, run } = useAction();
 
   const close = () => navigate(isEdit ? `/issues/${issueId}` : '/issues');
@@ -31,7 +32,7 @@ export default function IssueForm() {
 
   const submit = (e) => {
     e.preventDefault();
-    const values = { title: title.trim(), description: description.trim(), status };
+    const values = { title: title.trim(), description: description.trim(), status, dueDate: dueDate || null };
     run(async () => {
       if (isEdit) {
         await updateIssue(issueId, values);
@@ -54,7 +55,14 @@ export default function IssueForm() {
           <input className="field" type="text" required maxLength={120} placeholder="e.g. Spring Coat Drive" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="lbl">Description
-          <textarea className="field" rows={4} maxLength={2000} placeholder="What's this about? Any dates or places?" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea className="field" rows={4} maxLength={2000} placeholder="What's this about? Where?" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </label>
+        <label className="lbl">Due date
+          <input className="field" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <span className="hint">
+            Optional.{' '}
+            {dueDate && <button type="button" className="textlink small" onClick={() => setDueDate('')}>Clear date</button>}
+          </span>
         </label>
         <Segmented label="Status" name="issue-status" options={ISSUE_STATUS} value={status} onChange={setStatus} />
         <div className="note-row">

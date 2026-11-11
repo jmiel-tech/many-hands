@@ -27,6 +27,12 @@ service cloud.firestore {
     function createdNow() {
       return incoming().createdAt == request.time;
     }
+    // dueDate is an optional 'YYYY-MM-DD' day, so docs created before it existed stay valid.
+    function validDueDate() {
+      return !('dueDate' in incoming())
+        || incoming().dueDate == null
+        || (incoming().dueDate is string && incoming().dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
+    }
     function memberExists(id) {
       return exists(/databases/$(database)/documents/members/$(id));
     }
@@ -51,7 +57,9 @@ service cloud.firestore {
 
     // ---- issues/{id} ----
     function validIssue() {
-      return hasExactly(['title', 'description', 'status', 'ownerId', 'createdAt'])
+      return incoming().keys().hasAll(['title', 'description', 'status', 'ownerId', 'createdAt'])
+        && incoming().keys().hasOnly(['title', 'description', 'status', 'ownerId', 'createdAt', 'dueDate'])
+        && validDueDate()
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
         && incoming().status in ['open', 'in_progress', 'resolved'];
@@ -66,12 +74,6 @@ service cloud.firestore {
     }
 
     // ---- tasks/{id} ----
-    // dueDate is optional, so tasks created before it existed stay valid.
-    function validDueDate() {
-      return !('dueDate' in incoming())
-        || incoming().dueDate == null
-        || (incoming().dueDate is string && incoming().dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
-    }
     function validTask() {
       return incoming().keys().hasAll(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])
         && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt', 'dueDate'])

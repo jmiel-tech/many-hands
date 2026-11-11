@@ -141,7 +141,7 @@ export default function TaskPanel() {
         <section aria-label="Task" className="stack">
           <div className="row-badges">
             <StatusBadge status={task.status} />
-            <DueBadge task={task} />
+            <DueBadge item={task} />
           </div>
           <h1>{task.title}</h1>
           {task.assigneeId ? (
