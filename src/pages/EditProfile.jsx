@@ -4,14 +4,15 @@ import { auth } from '../firebase.js';
 import { useAuth } from '../lib/auth.jsx';
 import { friendlyError, useAction } from '../lib/errors.js';
 import { updateMember } from '../lib/api.js';
-import { Avatar, ErrorNote, FormHead, Modal } from '../components/ui.jsx';
+import { formatPhone } from '../lib/phone.js';
+import { Avatar, ErrorNote, FormHead, Modal, PhoneInput } from '../components/ui.jsx';
 
 export default function EditProfile() {
   const { user, member, changeEmail } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState(member.name);
   const [email, setEmail] = useState(member.email);
-  const [phone, setPhone] = useState(member.phone);
+  const [phone, setPhone] = useState(formatPhone(member.phone));
   const [password, setPassword] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
   const [notice, setNotice] = useState('');
@@ -69,9 +70,7 @@ export default function EditProfile() {
           <input className="field" type="email" autoComplete="email" required maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} />
           <span className="hint">You also use this to log in. It has to be one nobody else uses.</span>
         </label>
-        <label className="lbl">Phone
-          <input className="field" type="tel" autoComplete="tel" required maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </label>
+        <PhoneInput value={phone} onChange={setPhone} />
         {needsPassword && (
           <label className="lbl">Password
             <input className="field" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />

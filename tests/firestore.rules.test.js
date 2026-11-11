@@ -27,7 +27,7 @@ const signedOut = () => env.unauthenticatedContext().firestore();
 const member = (id, extra = {}) => ({
   name: id,
   email: `${id}@example.com`,
-  phone: '555-0100',
+  phone: '(555) 555-0100',
   createdAt: serverTimestamp(),
   ...extra,
 });
@@ -104,10 +104,10 @@ test('member doc must use the login email on create', async () => {
   await assertFails(setDoc(doc(asUser('carol'), 'members/carol'), member('carol', { email: 'alice@example.com' })));
 });
 test('owner can update their profile', async () => {
-  await assertSucceeds(updateDoc(doc(asUser('alice'), 'members/alice'), { phone: '555-0199' }));
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'members/alice'), { phone: '(555) 555-0199' }));
 });
 test('non-owner cannot update a profile', async () => {
-  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { phone: '555-0199' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { phone: '(555) 555-0199' }));
 });
 test('profile email cannot be set to something other than the login email', async () => {
   await assertFails(updateDoc(doc(asUser('alice'), 'members/alice'), { email: 'bob@example.com' }));
@@ -122,6 +122,13 @@ test('member validation: missing field, extra field, and too-long name fail', as
   await assertFails(setDoc(doc(db, 'members/carol'), noPhone));
   await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { admin: true })));
   await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { name: 'x'.repeat(81) })));
+});
+test('member phone must be a 10-digit number in (555) 123-4567 format', async () => {
+  const db = asUser('carol');
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '555-0100' })));
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '5551234567' })));
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '(555) 123-45678' })));
+  await assertSucceeds(setDoc(doc(db, 'members/carol'), member('carol', { phone: '(555) 123-4567' })));
 });
 
 // ---- issues ----
@@ -167,6 +174,32 @@ test('issue validation: bad status and too-long title fail', async () => {
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { status: 'closed' }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { title: 'x'.repeat(121) }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { title: '' }));
+});
+test('issue dueDate: can be created with a date or null; malformed values fail', async () => {
+  const db = asUser('bob');
+  await assertSucceeds(setDoc(doc(db, 'issues/i1'), issue('bob', { dueDate: '2026-11-15' })));
+  await assertSucceeds(setDoc(doc(db, 'issues/i2'), issue('bob', { dueDate: null })));
+  await assertFails(setDoc(doc(db, 'issues/i3'), issue('bob', { dueDate: 'Nov 15' })));
+  await assertFails(setDoc(doc(db, 'issues/i4'), issue('bob', { dueDate: when })));
+});
+test('issue dueDate: an issue without it can still be updated, and the owner can set and clear it', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { status: 'in_progress' }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: '2026-11-15' }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: null }));
+});
+test('issue dueDate: an editor can set and clear it, even on an issue that never had one', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
+  });
+  const db = asUser('bob');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed', dueDate: null }));
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: '2026-11-15' }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { dueDate: 'soon' }));
+});
+test('issue dueDate: a non-owner cannot set it, and unknown fields still fail', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { dueDate: '2026-11-15' }));
+  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { priority: 'high' }));
 });
 test('owner can delete an issue, non-owner cannot', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'issues/issue1')));
@@ -235,6 +268,40 @@ test('task validation: bad status and removed required field fail', async () => 
   const db = asUser('alice');
   await assertFails(updateDoc(doc(db, 'tasks/assigned'), { status: 'blocked' }));
   await assertFails(updateDoc(doc(db, 'tasks/assigned'), { description: deleteField() }));
+});
+test('task validation: an unknown extra field fails', async () => {
+  await assertFails(setDoc(doc(asUser('alice'), 'tasks/t1'), task('alice', null, { priority: 'high' })));
+  await assertFails(updateDoc(doc(asUser('alice'), 'tasks/assigned'), { priority: 'high' }));
+});
+
+// ---- task due dates (seeded tasks have no dueDate, like tasks made before the field existed) ----
+test('dueDate: a task can be created with a date or with null', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('alice', null, { dueDate: '2026-11-15' })));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t2'), task('alice', 'bob', { dueDate: null })));
+});
+test('dueDate: malformed values fail', async () => {
+  const db = asUser('alice');
+  await assertFails(setDoc(doc(db, 'tasks/t1'), task('alice', null, { dueDate: 'Nov 15' })));
+  await assertFails(setDoc(doc(db, 'tasks/t2'), task('alice', null, { dueDate: 20261115 })));
+  await assertFails(setDoc(doc(db, 'tasks/t3'), task('alice', null, { dueDate: when })));
+  await assertFails(setDoc(doc(db, 'tasks/t4'), task('alice', null, { dueDate: '2026-11-15T00:00' })));
+});
+test('dueDate: a task without the field can still be claimed and updated', async () => {
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/open'), { assigneeId: 'bob' }));
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/open'), { status: 'doing' }));
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'tasks/assigned'), { status: 'done' }));
+});
+test('dueDate: the assignee can set, change and clear it', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: '2026-11-15' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: '2026-12-01' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: null }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: deleteField() }));
+});
+test('dueDate: a non-assignee cannot set it, and a claim cannot set it', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/assigned'), { dueDate: '2026-11-15' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/open'), { assigneeId: 'bob', dueDate: '2026-11-15' }));
 });
 test('assignee can delete; non-assignee and unassigned deletes fail', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'tasks/assigned')));

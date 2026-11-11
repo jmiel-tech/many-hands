@@ -5,7 +5,7 @@ import { useComments, useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { addComment, deleteComment, deleteTask, updateComment, updateTask } from '../lib/api.js';
 import { TakeButton } from '../components/cards.jsx';
-import { Avatar, ConfirmRow, ErrorNote, Icons, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
+import { Avatar, ConfirmRow, DueBadge, ErrorNote, Icons, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
 
 function Comment({ comment }) {
   const { user } = useAuth();
@@ -139,7 +139,10 @@ export default function TaskPanel() {
     <Modal title={task.title} variant="panel" closeLabel="‹ Back" onClose={close}>
       <div className="panel-body">
         <section aria-label="Task" className="stack">
-          <StatusBadge status={task.status} />
+          <div className="row-badges">
+            <StatusBadge status={task.status} />
+            <DueBadge item={task} />
+          </div>
           {issue && (
             <div className="meta-row">
               <span className="muted">Issue owner: {issue.ownerId === user.uid ? 'you' : nameOf(issue.ownerId)}</span>

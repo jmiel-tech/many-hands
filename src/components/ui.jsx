@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
+import { formatDue, isOverdue } from '../lib/dates.js';
+import { PHONE_PATTERN, PHONE_PLACEHOLDER, formatPhone } from '../lib/phone.js';
 
 export const TASK_STATUS = { todo: 'To do', doing: 'Doing', done: 'Done' };
 export const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
@@ -28,6 +30,8 @@ export const Icons = {
   home: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>),
   issues: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 9h8" /><path d="M8 13h8" /><path d="M8 17h5" /></svg>),
   members: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 14.6c2.4.3 4.2 2 5 5.4" /></svg>),
+  calendar: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M3.5 10h17" /><path d="M8 3v4" /><path d="M16 3v4" /></svg>),
+  chevronLeft: (p) => (<svg width="16" height="16" strokeWidth="2.2" {...svgProps} {...p}><path d="M15 6l-6 6 6 6" /></svg>),
   me: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg>),
   chevron: (p) => (<svg width="16" height="16" strokeWidth="2.2" {...svgProps} {...p}><path d="M9 6l6 6-6 6" /></svg>),
   lock: (p) => (<svg width="14" height="14" strokeWidth="2" {...svgProps} {...p}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>),
@@ -99,6 +103,16 @@ export function StatusBadge({ status }) {
   );
 }
 
+// The text says "Overdue", so the warning never depends on color alone.
+// Takes a task or an issue.
+export function DueBadge({ item }) {
+  if (!item.dueDate) return null;
+  const when = formatDue(item.dueDate);
+  return isOverdue(item)
+    ? <span className="badge badge-due tone-risk">Overdue · {when}</span>
+    : <span className="badge badge-due tone-todo">Due {when}</span>;
+}
+
 export function LockNote({ children }) {
   return (
     <span className="lock">
@@ -115,6 +129,28 @@ export function ErrorNote({ children }) {
 
 export function Loading() {
   return <div className="loading" role="status">Loading…</div>;
+}
+
+// Phone field that formats as you type and stops at 10 digits.
+export function PhoneInput({ value, onChange, label = 'Phone' }) {
+  return (
+    <label className="lbl">{label}
+      <input
+        className="field"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        required
+        maxLength={14}
+        placeholder={PHONE_PLACEHOLDER}
+        pattern={PHONE_PATTERN}
+        title={`Enter a 10-digit phone number, like ${PHONE_PLACEHOLDER}`}
+        value={value}
+        onChange={(e) => onChange(formatPhone(e.target.value))}
+      />
+      <span className="hint">10-digit US number.</span>
+    </label>
+  );
 }
 
 // Real radio inputs, so arrow keys and focus work for free.
