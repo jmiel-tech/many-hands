@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { PHONE_PATTERN, PHONE_PLACEHOLDER, formatPhone } from '../lib/phone.js';
 
 export const TASK_STATUS = { todo: 'To do', doing: 'Doing', done: 'Done' };
 export const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
@@ -115,6 +116,28 @@ export function ErrorNote({ children }) {
 
 export function Loading() {
   return <div className="loading" role="status">Loading…</div>;
+}
+
+// Phone field that formats as you type and stops at 10 digits.
+export function PhoneInput({ value, onChange, label = 'Phone' }) {
+  return (
+    <label className="lbl">{label}
+      <input
+        className="field"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        required
+        maxLength={14}
+        placeholder={PHONE_PLACEHOLDER}
+        pattern={PHONE_PATTERN}
+        title={`Enter a 10-digit phone number, like ${PHONE_PLACEHOLDER}`}
+        value={value}
+        onChange={(e) => onChange(formatPhone(e.target.value))}
+      />
+      <span className="hint">10-digit US number.</span>
+    </label>
+  );
 }
 
 // Real radio inputs, so arrow keys and focus work for free.

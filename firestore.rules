@@ -36,7 +36,8 @@ service cloud.firestore {
       return hasExactly(['name', 'email', 'phone', 'createdAt'])
         && isText(incoming().name, 1, 80)
         && isText(incoming().email, 3, 254)
-        && isText(incoming().phone, 1, 30);
+        && incoming().phone is string
+        && incoming().phone.matches('^[(][0-9]{3}[)] [0-9]{3}-[0-9]{4}$');
     }
 
     match /members/{memberId} {

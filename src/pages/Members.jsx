@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { Avatar } from '../components/ui.jsx';
+import { displayPhone } from '../lib/phone.js';
 
 export default function Members() {
   const { user } = useAuth();
@@ -30,7 +31,7 @@ export default function Members() {
                   <h2>{m.name}</h2>
                   <span className="stack-xs">
                     <span className="muted wrap">{m.email}</span>
-                    <span className="muted">{m.phone}</span>
+                    <span className="muted">{displayPhone(m.phone)}</span>
                   </span>
                 </Link>
               </li>

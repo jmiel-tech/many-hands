@@ -27,7 +27,7 @@ const signedOut = () => env.unauthenticatedContext().firestore();
 const member = (id, extra = {}) => ({
   name: id,
   email: `${id}@example.com`,
-  phone: '555-0100',
+  phone: '(555) 555-0100',
   createdAt: serverTimestamp(),
   ...extra,
 });
@@ -103,10 +103,10 @@ test('member doc must use the login email on create', async () => {
   await assertFails(setDoc(doc(asUser('carol'), 'members/carol'), member('carol', { email: 'alice@example.com' })));
 });
 test('owner can update their profile', async () => {
-  await assertSucceeds(updateDoc(doc(asUser('alice'), 'members/alice'), { phone: '555-0199' }));
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'members/alice'), { phone: '(555) 555-0199' }));
 });
 test('non-owner cannot update a profile', async () => {
-  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { phone: '555-0199' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { phone: '(555) 555-0199' }));
 });
 test('profile email cannot be set to something other than the login email', async () => {
   await assertFails(updateDoc(doc(asUser('alice'), 'members/alice'), { email: 'bob@example.com' }));
@@ -121,6 +121,13 @@ test('member validation: missing field, extra field, and too-long name fail', as
   await assertFails(setDoc(doc(db, 'members/carol'), noPhone));
   await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { admin: true })));
   await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { name: 'x'.repeat(81) })));
+});
+test('member phone must be a 10-digit number in (555) 123-4567 format', async () => {
+  const db = asUser('carol');
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '555-0100' })));
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '5551234567' })));
+  await assertFails(setDoc(doc(db, 'members/carol'), member('carol', { phone: '(555) 123-45678' })));
+  await assertSucceeds(setDoc(doc(db, 'members/carol'), member('carol', { phone: '(555) 123-4567' })));
 });
 
 // ---- issues ----
