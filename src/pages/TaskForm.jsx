@@ -18,6 +18,7 @@ export default function TaskForm() {
   const [description, setDescription] = useState(task?.description || '');
   const [status, setStatus] = useState(task?.status || 'todo');
   const [assigneeId, setAssigneeId] = useState(task?.assigneeId ?? '');
+  const [dueDate, setDueDate] = useState(task?.dueDate || '');
   const { busy, error, run } = useAction();
 
   const close = () => navigate(isEdit ? `/issues/${routeIssueId}/tasks/${taskId}` : `/issues/${routeIssueId}`);
@@ -56,6 +57,7 @@ export default function TaskForm() {
       title: title.trim(),
       description: description.trim(),
       assigneeId: assigneeId || null,
+      dueDate: dueDate || null,
       // A task nobody holds can't be underway.
       status: unassigned ? 'todo' : status,
     };
@@ -89,7 +91,14 @@ export default function TaskForm() {
           <input className="field" type="text" required maxLength={120} placeholder="e.g. Bring 2 folding tables" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="lbl">Description
-          <textarea className="field" rows={4} maxLength={2000} placeholder="What does this involve? When and where?" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea className="field" rows={4} maxLength={2000} placeholder="What does this involve? Where?" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </label>
+        <label className="lbl">Due date
+          <input className="field" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <span className="hint">
+            Optional.{' '}
+            {dueDate && <button type="button" className="textlink small" onClick={() => setDueDate('')}>Clear date</button>}
+          </span>
         </label>
         {!unassigned && (
           <Segmented label="Status" name="task-form-status" options={TASK_STATUS} value={status} onChange={setStatus} />

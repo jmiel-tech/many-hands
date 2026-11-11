@@ -7,7 +7,7 @@ import { groupTasks, healthSentence, issueHealth } from '../lib/health.js';
 import { deleteIssue } from '../lib/api.js';
 import { TopBar } from '../components/Layout.jsx';
 import { HeldTaskCard, OpenTaskCard } from '../components/cards.jsx';
-import { Avatar, ConfirmRow, ErrorNote, HealthBadge, Icons, LockNote, StatusBadge, firstName } from '../components/ui.jsx';
+import { Avatar, ConfirmRow, DueBadge, ErrorNote, HealthBadge, Icons, LockNote, StatusBadge, firstName } from '../components/ui.jsx';
 
 const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -90,6 +90,7 @@ export default function IssueDetail() {
         {issue.description && <p className="lede preline">{issue.description}</p>}
         <div className="meta-row">
           <StatusBadge status={issue.status} />
+          <DueBadge item={issue} />
           <Link to={isOwner ? '/me' : `/members/${issue.ownerId}`} className="owner-link">
             <Avatar id={issue.ownerId} name={ownerName} size={28} />
             Owner: {isOwner ? 'you' : ownerName}

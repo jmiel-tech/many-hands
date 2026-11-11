@@ -1,3 +1,5 @@
+import { bySoonestDue } from './dates.js';
+
 // Issue health, computed client-side from an issue's tasks. Text is always shown, never color alone.
 export function issueHealth(tasks) {
   const total = tasks.length;
@@ -18,6 +20,7 @@ export function groupTasks(tasks) {
     if (!task.assigneeId) groups.unclaimed.push(task);
     else groups[task.status]?.push(task);
   }
+  for (const list of Object.values(groups)) list.sort(bySoonestDue);
   return groups;
 }
 
