@@ -141,7 +141,7 @@ npm run preview
 | Collection | Fields |
 | --- | --- |
 | `members/{uid}` | `name`, `email`, `phone`, `createdAt` |
-| `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `editorIds` (uids with edit access, always includes the owner), `editableByAll` (optional boolean: when `true`, every member can edit the issue and add tasks), `createdAt` |
+| `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `editorIds` (uids with edit access, always includes the owner), `createdAt` |
 | `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
 | `admins/{uid}` | No fields needed. Added in the console only. |
