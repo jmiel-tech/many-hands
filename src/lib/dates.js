@@ -9,7 +9,7 @@ export function toISODate(date) {
 export const todayISO = (now = new Date()) => toISODate(now);
 
 // new Date('2026-11-15') would be midnight UTC, which is the day before in the Americas.
-function parseLocal(iso) {
+export function parseLocal(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
@@ -39,4 +39,27 @@ export function bySoonestDue(a, b) {
   if (a.dueDate) return -1;
   if (b.dueDate) return 1;
   return 0;
+}
+
+export const isISODate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+export const isMonthKey = (value) => typeof value === 'string' && /^\d{4}-\d{2}$/.test(value);
+
+// Month keys are 'YYYY-MM'. Date handles month and year rollover.
+export function shiftMonth(key, delta) {
+  const [y, m] = key.split('-').map(Number);
+  return toISODate(new Date(y, m - 1 + delta, 1)).slice(0, 7);
+}
+
+// Every day shown on a month calendar: whole weeks, Sunday to Saturday.
+export function monthDays(key) {
+  const [y, m] = key.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0);
+  const start = new Date(y, m - 1, 1 - first.getDay());
+  const end = new Date(y, m - 1, last.getDate() + (6 - last.getDay()));
+  const days = [];
+  for (let d = start; d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    days.push(toISODate(d));
+  }
+  return days;
 }

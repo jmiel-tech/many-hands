@@ -11,6 +11,7 @@ import IssueDetail from './pages/IssueDetail.jsx';
 import IssueForm from './pages/IssueForm.jsx';
 import TaskPanel from './pages/TaskPanel.jsx';
 import TaskForm from './pages/TaskForm.jsx';
+import CalendarPage from './pages/Calendar.jsx';
 import Members from './pages/Members.jsx';
 import MemberProfile from './pages/MemberProfile.jsx';
 import Me from './pages/Me.jsx';
@@ -37,6 +38,7 @@ function Gate() {
                 </Route>
               </Route>
             </Route>
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="members" element={<Members />} />
             <Route path="members/:memberId" element={<MemberProfile />} />
             <Route path="me" element={<Me />}>

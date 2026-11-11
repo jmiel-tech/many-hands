@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bySoonestDue, formatDue, isOverdue, todayISO } from '../src/lib/dates.js';
+import { bySoonestDue, formatDue, isOverdue, monthDays, shiftMonth, todayISO } from '../src/lib/dates.js';
 
 const now = new Date(2026, 10, 11, 23, 30); // Nov 11 2026, late evening local time
 
@@ -52,4 +52,24 @@ test('bySoonestDue puts dated tasks first, soonest first, and keeps undated orde
     { id: 'e' },
   ];
   assert.deepEqual([...tasks].sort(bySoonestDue).map((t) => t.id), ['d', 'b', 'a', 'c', 'e']);
+});
+
+test('shiftMonth rolls over years', () => {
+  assert.equal(shiftMonth('2026-11', 1), '2026-12');
+  assert.equal(shiftMonth('2026-12', 1), '2027-01');
+  assert.equal(shiftMonth('2026-01', -1), '2025-12');
+});
+
+test('monthDays covers whole Sunday-to-Saturday weeks', () => {
+  const days = monthDays('2026-11'); // Nov 1 2026 is a Sunday, Nov 30 a Monday
+  assert.equal(days[0], '2026-11-01');
+  assert.equal(days.at(-1), '2026-12-05');
+  assert.equal(days.length % 7, 0);
+  const feb = monthDays('2026-02'); // Feb 1 2026 is a Sunday, Feb 28 a Saturday
+  assert.equal(feb[0], '2026-02-01');
+  assert.equal(feb.length, 28);
+  const march = monthDays('2026-03'); // spans the US daylight-saving change
+  assert.equal(march[0], '2026-03-01');
+  assert.equal(new Set(march).size, march.length);
+  assert.ok(march.includes('2026-03-08') && march.includes('2026-03-09'));
 });
