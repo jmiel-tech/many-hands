@@ -26,12 +26,13 @@ export async function updateMember(uid, patch) {
   await updateDoc(doc(db, 'members', uid), patch);
 }
 
-export async function createIssue(uid, { title, description, status, editorIds }) {
+export async function createIssue(uid, { title, description, status, dueDate, editorIds }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'issues'), {
     title,
     description,
     status,
+    dueDate: dueDate || null,
     ownerId: uid,
     editorIds,
     createdAt: serverTimestamp(),
@@ -49,7 +50,7 @@ export async function deleteIssue(id) {
   await deleteDoc(doc(db, 'issues', id));
 }
 
-export async function createTask(uid, { issueId, title, description, status, assigneeId }) {
+export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'tasks'), {
     issueId,
@@ -57,6 +58,7 @@ export async function createTask(uid, { issueId, title, description, status, ass
     description,
     status,
     assigneeId,
+    dueDate: dueDate || null,
     createdBy: uid,
     createdAt: serverTimestamp(),
   });
