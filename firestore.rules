@@ -51,18 +51,27 @@ service cloud.firestore {
     }
 
     // ---- issues/{id} ----
+    // Everyone can read. editorIds lists who can edit the issue and create tasks on it; the owner is always in it.
     function validIssue() {
-      return hasExactly(['title', 'description', 'status', 'ownerId', 'createdAt'])
+      return hasExactly(['title', 'description', 'status', 'ownerId', 'editorIds', 'createdAt'])
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
-        && incoming().status in ['open', 'in_progress', 'resolved'];
+        && incoming().status in ['open', 'in_progress', 'resolved']
+        && incoming().editorIds is list
+        && incoming().editorIds.size() <= 100
+        && incoming().ownerId in incoming().editorIds;
+    }
+    // Editors who aren't the owner can only change the issue's content.
+    function isContentEdit() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'status']);
     }
 
     match /issues/{issueId} {
       allow read: if signedIn();
       allow create: if signedIn() && validIssue() && createdNow() && incoming().ownerId == uid();
-      allow update: if signedIn() && existing().ownerId == uid() && validIssue()
-        && unchanged('ownerId') && unchanged('createdAt');
+      allow update: if signedIn() && validIssue() && unchanged('ownerId') && unchanged('createdAt')
+        && (existing().ownerId == uid()
+            || (uid() in existing().editorIds && isContentEdit()));
       allow delete: if signedIn() && existing().ownerId == uid();
     }
 
@@ -87,7 +96,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn() && validTask() && createdNow()
         && incoming().createdBy == uid()
-        && exists(/databases/$(database)/documents/issues/$(incoming().issueId));
+        && uid() in get(/databases/$(database)/documents/issues/$(incoming().issueId)).data.editorIds;
       allow update: if signedIn() && (
         isClaim()
         || (existing().assigneeId == uid() && validTask()

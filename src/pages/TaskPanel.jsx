@@ -140,6 +140,12 @@ export default function TaskPanel() {
       <div className="panel-body">
         <section aria-label="Task" className="stack">
           <StatusBadge status={task.status} />
+          {issue && (
+            <div className="meta-row">
+              <span className="muted">Issue owner: {issue.ownerId === user.uid ? 'you' : nameOf(issue.ownerId)}</span>
+              {issue.ownerId === user.uid && <Link to={`/issues/${issueId}/access`} className="pill pill-plain pill-sm">Edit access…</Link>}
+            </div>
+          )}
           <h1>{task.title}</h1>
           {task.assigneeId ? (
             <Link to={mine ? '/me' : `/members/${task.assigneeId}`} className="assignee-chip">

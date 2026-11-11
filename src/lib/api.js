@@ -26,13 +26,14 @@ export async function updateMember(uid, patch) {
   await updateDoc(doc(db, 'members', uid), patch);
 }
 
-export async function createIssue(uid, { title, description, status }) {
+export async function createIssue(uid, { title, description, status, editorIds }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'issues'), {
     title,
     description,
     status,
     ownerId: uid,
+    editorIds,
     createdAt: serverTimestamp(),
   });
   return ref.id;

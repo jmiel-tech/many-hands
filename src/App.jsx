@@ -9,6 +9,7 @@ import Home from './pages/Home.jsx';
 import IssuesPage from './pages/Issues.jsx';
 import IssueDetail from './pages/IssueDetail.jsx';
 import IssueForm from './pages/IssueForm.jsx';
+import IssueAccess from './pages/IssueAccess.jsx';
 import TaskPanel from './pages/TaskPanel.jsx';
 import TaskForm from './pages/TaskForm.jsx';
 import Members from './pages/Members.jsx';
@@ -31,6 +32,7 @@ function Gate() {
               <Route path="new" element={<IssueForm />} />
               <Route path=":issueId" element={<IssueDetail />}>
                 <Route path="edit" element={<IssueForm />} />
+                <Route path="access" element={<IssueAccess />} />
                 <Route path="tasks/new" element={<TaskForm />} />
                 <Route path="tasks/:taskId" element={<TaskPanel />}>
                   <Route path="edit" element={<TaskForm />} />
