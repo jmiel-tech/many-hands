@@ -73,7 +73,7 @@ Open the site in two separate browser profiles, or one normal window and one pri
 | As A, create | As B, check that |
 | --- | --- |
 | Nothing extra | **Members > A** shows no Edit button and says "Only A can edit this profile." |
-| An issue | The issue shows no Edit or Delete, and says "Only A can edit this issue." |
+| An issue | The issue shows no Edit or Delete or Add a task, and says only A and people A gave edit access can edit it. |
 | A task assigned to A | The task shows no status control, Edit, or Delete, and says "Only A can edit, update or delete this task." |
 | A comment on that task | The comment has no Edit or Delete. B can still add their own comment and edit it. |
 | An unassigned task | **Take this task** works and assigns it to B. |
@@ -141,8 +141,8 @@ npm run preview
 | Collection | Fields |
 | --- | --- |
 | `members/{uid}` | `name`, `email`, `phone`, `createdAt` |
-| `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `ownerId`, `createdAt` |
-| `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `createdBy`, `createdAt` |
+| `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `editorIds` (uids with edit access, always includes the owner), `editableByAll` (optional boolean: when `true`, every member can edit the issue and add tasks), `createdAt` |
+| `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
 | `admins/{uid}` | No fields needed. Added in the console only. |
 | `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |

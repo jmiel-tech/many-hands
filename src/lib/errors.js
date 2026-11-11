@@ -10,7 +10,7 @@ const MESSAGES = {
   'auth/too-many-requests': 'Too many tries. Wait a few minutes, then try again.',
   'auth/network-request-failed': "Can't reach the server. Check your connection and try again.",
   'auth/user-token-expired': 'You need to log in again.',
-  'permission-denied': "You don't have permission to do that. Only the owner can change it.",
+  'permission-denied': "You don't have permission to do that.",
   unavailable: "Can't reach the server. Check your connection and try again.",
   'app/offline': "You're offline. This works again once you're back online.",
   'app/already-taken': 'Someone else just took this task.',

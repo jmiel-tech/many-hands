@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
-import { useData } from '../lib/data.jsx';
+import { useData, canEditIssue } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { groupTasks, healthSentence, issueHealth } from '../lib/health.js';
 import { adminDeleteIssue, deleteIssue } from '../lib/api.js';
 import { TopBar } from '../components/Layout.jsx';
 import { HeldTaskCard, OpenTaskCard } from '../components/cards.jsx';
-import { Avatar, ConfirmRow, ErrorNote, HealthBadge, Icons, LockNote, StatusBadge, firstName } from '../components/ui.jsx';
+import { Avatar, ConfirmRow, DueBadge, ErrorNote, HealthBadge, Icons, LockNote, StatusBadge, firstName } from '../components/ui.jsx';
 
 const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -68,7 +68,10 @@ export default function IssueDetail() {
   const health = issueHealth(tasks);
   const groups = groupTasks(tasks);
   const isOwner = issue.ownerId === user.uid;
-  const canManage = isOwner || isAdmin;
+  const canEdit = canEditIssue(issue, user.uid);
+  // Admins can edit and delete any issue, on top of the owner and people with edit access.
+  const canManage = canEdit || isAdmin;
+  const canDelete = isOwner || isAdmin;
   const ownerName = nameOf(issue.ownerId);
   const started = groups.doing.length + groups.done.length;
 
@@ -92,15 +95,17 @@ export default function IssueDetail() {
         {issue.description && <p className="lede preline">{issue.description}</p>}
         <div className="meta-row">
           <StatusBadge status={issue.status} />
+          <DueBadge item={issue} />
           <Link to={isOwner ? '/me' : `/members/${issue.ownerId}`} className="owner-link">
             <Avatar id={issue.ownerId} name={ownerName} size={28} />
             Owner: {isOwner ? 'you' : ownerName}
           </Link>
-          {!isOwner && !isAdmin && <LockNote>Only {firstName(ownerName)} can edit this issue.</LockNote>}
-          {!isOwner && isAdmin && <span className="admin-note"><Icons.admin width="16" height="16" />You can edit this as an admin.</span>}
+          {isOwner && <Link to={`/issues/${issue.id}/access`} className="pill pill-plain pill-sm">Edit access…</Link>}
+          {!canEdit && !isAdmin && <LockNote>Only {firstName(ownerName)} and people they've given edit access can edit this issue or add tasks.</LockNote>}
+          {!canEdit && isAdmin && <span className="admin-note"><Icons.admin width="16" height="16" />You can edit or delete this as an admin.</span>}
         </div>
         <div className="hero-actions hero-actions-row">
-          <Link to={`/issues/${issue.id}/tasks/new`} className="pill">Add a task</Link>
+          {canEdit && <Link to={`/issues/${issue.id}/tasks/new`} className="pill">Add a task</Link>}
           {groups.unclaimed.length > 0 && (
             <button type="button" className="textlink" onClick={() => scrollTo('group-unclaimed')}>See what still needs someone<Icons.chevron /></button>
           )}
@@ -108,7 +113,7 @@ export default function IssueDetail() {
         {canManage && !confirming && (
           <div className="owner-actions">
             <Link to={`/issues/${issue.id}/edit`} className="textlink">Edit</Link>
-            <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>
+            {canDelete && <button type="button" className="textlink danger" onClick={askDelete}>Delete</button>}
           </div>
         )}
         {isOwner && !isAdmin && confirming && tasks.length > 0 && (

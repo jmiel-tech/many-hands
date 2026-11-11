@@ -8,6 +8,7 @@ import { Avatar, Icons, Loading, Logo } from './ui.jsx';
 const LINKS = [
   { to: '/', label: 'Home', icon: Icons.home, end: true },
   { to: '/issues', label: 'Issues', icon: Icons.issues },
+  { to: '/calendar', label: 'Calendar', icon: Icons.calendar },
   { to: '/members', label: 'Members', icon: Icons.members },
   { to: '/me', label: 'Me', icon: Icons.me },
 ];
