@@ -37,7 +37,6 @@ const issue = (ownerId, extra = {}) => ({
   description: 'Saturday',
   status: 'open',
   ownerId,
-  editorIds: [ownerId],
   createdAt: serverTimestamp(),
   ...extra,
 });
@@ -147,33 +146,25 @@ test('cannot create an issue owned by someone else', async () => {
 test('owner can update an issue', async () => {
   await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { status: 'resolved' }));
 });
-test('non-owner without edit access cannot update an issue', async () => {
-  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { status: 'resolved' }));
+test('any member can edit an issue they do not own', async () => {
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'issues/issue1'), { status: 'resolved', title: 'Renamed', description: 'New' }));
 });
-test('owner cannot change ownerId', async () => {
+test('owner cannot change ownerId, and nobody else can either', async () => {
   await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { ownerId: 'bob' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { ownerId: 'bob' }));
 });
-test('owner can grant and revoke edit access', async () => {
-  const db = asUser('alice');
-  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
-  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice'] }));
+test('new issues cannot carry the removed permission fields', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editorIds: ['bob'] })));
+  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editableByAll: true })));
 });
-test('owner cannot remove their own edit access', async () => {
-  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editorIds: ['bob'] }));
-});
-test('an editor can change issue content but not permissions, and cannot delete', async () => {
+test('an old issue that still has the removed permission fields can be edited by anyone, but the fields cannot change', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice'], editableByAll: false });
   });
-  const db = asUser('bob');
-  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { status: 'resolved', title: 'Renamed' }));
-  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob', 'carol'] }));
-  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice'] }));
-  await assertFails(deleteDoc(doc(db, 'issues/issue1')));
-});
-test('issue must list the owner as an editor', async () => {
-  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editorIds: [] })));
-  await assertFails(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob', { editorIds: ['alice'] })));
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { title: 'Owner edit' }));
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'issues/issue1'), { title: 'Member edit' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { editorIds: ['bob'] }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { editableByAll: true }));
 });
 test('issue validation: bad status and too-long title fail', async () => {
   const db = asUser('alice');
@@ -194,17 +185,13 @@ test('issue dueDate: an issue without it can still be updated, and the owner can
   await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: '2026-11-15' }));
   await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: null }));
 });
-test('issue dueDate: an editor can set and clear it, even on an issue that never had one', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
-  });
+test('issue dueDate: any member can set and clear it, even on an issue that never had one', async () => {
   const db = asUser('bob');
   await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed', dueDate: null }));
   await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { dueDate: '2026-11-15' }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { dueDate: 'soon' }));
 });
-test('issue dueDate: a non-owner cannot set it, and unknown fields still fail', async () => {
-  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { dueDate: '2026-11-15' }));
+test('issue dueDate: unknown fields still fail', async () => {
   await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { priority: 'high' }));
 });
 test('owner can delete an issue, non-owner cannot', async () => {
@@ -218,44 +205,10 @@ test('the owner can create a task on their issue, assigned to anyone or no one',
   await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('alice', 'bob')));
   await assertSucceeds(setDoc(doc(db, 'tasks/t2'), task('alice', null)));
 });
-test('a user without edit access cannot create a task', async () => {
-  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', null)));
-});
-test('owner can make an issue editable by everyone; others cannot toggle it', async () => {
-  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: true }));
-  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { editableByAll: false }));
-});
-test('when editable by all, any member can edit the issue and add tasks, but not delete it or change access', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: true });
-  });
+test('any member can create a task on any issue, assigned to anyone or no one', async () => {
   const db = asUser('bob');
-  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed' }));
-  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('bob', null)));
-  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editableByAll: false }));
-  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
-  await assertFails(deleteDoc(doc(db, 'issues/issue1')));
-});
-test('an issue that still carries the old editableByAll field can be edited by its owner', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: false });
-  });
-  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
-  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: 'yes' }));
-});
-test('the owner of an issue that has no editorIds can still add a task, but others cannot', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    const { editorIds, ...legacy } = issue('alice', { createdAt: when });
-    await setDoc(doc(ctx.firestore(), 'issues/legacy'), legacy);
-  });
-  await assertSucceeds(setDoc(doc(asUser('alice'), 'tasks/t1'), task('alice', null, { issueId: 'legacy' })));
-  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t2'), task('bob', null, { issueId: 'legacy' })));
-});
-test('an editor can create a task', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
-  });
-  await assertSucceeds(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', 'alice')));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t3'), task('bob', 'alice')));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t4'), task('bob', null)));
 });
 test('createdBy must be the current user', async () => {
   await assertFails(setDoc(doc(asUser('alice'), 'tasks/t1'), task('bob', null)));
