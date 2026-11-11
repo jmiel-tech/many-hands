@@ -221,6 +221,21 @@ test('the owner can create a task on their issue, assigned to anyone or no one',
 test('a user without edit access cannot create a task', async () => {
   await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', null)));
 });
+test('an issue that still carries the old editableByAll field can be edited by its owner', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: false });
+  });
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
+  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: 'yes' }));
+});
+test('the owner of an issue that has no editorIds can still add a task, but others cannot', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const { editorIds, ...legacy } = issue('alice', { createdAt: when });
+    await setDoc(doc(ctx.firestore(), 'issues/legacy'), legacy);
+  });
+  await assertSucceeds(setDoc(doc(asUser('alice'), 'tasks/t1'), task('alice', null, { issueId: 'legacy' })));
+  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t2'), task('bob', null, { issueId: 'legacy' })));
+});
 test('an editor can create a task', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editorIds: ['alice', 'bob'] });
