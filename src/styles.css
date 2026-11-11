@@ -275,6 +275,8 @@ a.card:hover, a.card:focus-visible, .task-card:hover { color: var(--ink); box-sh
 .md-list { min-width: 0; }
 .md-cards { display: flex; flex-direction: column; gap: 16px; padding: 48px var(--gutter) var(--section); background: var(--bg-alt); }
 .md-detail { min-width: 0; }
+.list-tools { display: flex; flex-direction: column; gap: 12px; padding: 0 var(--gutter) 24px; }
+.list-tools .field { width: 100%; }
 .md-empty { display: none; }
 .md-has-detail .md-list { display: none; }
 
@@ -465,6 +467,7 @@ textarea.field { padding: 14px 18px; line-height: 1.4; resize: vertical; }
   .hero-list .lede { font-size: 16px; }
   .hero-list .hero-actions { margin-top: 6px; }
   .hero-list .pill { min-height: 44px; padding: 0 18px; font-size: 15px; }
+  .list-tools { padding: 0; }
   .md-cards { gap: 12px; padding: 0; background: none; }
   .md-cards .issue-card { padding: 18px 20px; border-radius: 22px; background: var(--bg-alt); }
   .md-cards .issue-card h3 { font-size: 18px; }
