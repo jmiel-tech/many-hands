@@ -5,6 +5,7 @@ import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, OpenTaskCard } from '../components/cards.jsx';
 import { HealthBadge, Icons, firstName } from '../components/ui.jsx';
+import { bySoonestDue } from '../lib/dates.js';
 
 function timeOfDay(date) {
   const hour = date.getHours();
@@ -23,7 +24,7 @@ export default function Home() {
   const active = issues.filter((i) => i.status !== 'resolved');
   const issueTitle = (id) => issues.find((i) => i.id === id)?.title;
   // Skips tasks left behind by a deleted issue, since nobody can open those.
-  const open = tasks.filter((t) => t.status === 'todo' && !t.assigneeId && issueTitle(t.issueId));
+  const open = tasks.filter((t) => t.status === 'todo' && !t.assigneeId && issueTitle(t.issueId)).sort(bySoonestDue);
 
   const scrollToOpen = () => document.getElementById('h-open')?.scrollIntoView({ behavior: 'smooth' });
 

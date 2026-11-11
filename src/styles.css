@@ -136,6 +136,8 @@ button:disabled { cursor: default; opacity: 0.6; }
 .tone-orphan { background: var(--orphan-bg); color: var(--orphan-fg); }
 .tone-open { background: var(--open-bg); color: var(--open-fg); }
 .tone-todo { background: var(--todo-bg); color: var(--ink); }
+.badge-due { align-self: flex-start; }
+.row-badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .tone-accent { background: var(--accent); color: #fff; }
 .lock { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
 .lock svg { flex-shrink: 0; }

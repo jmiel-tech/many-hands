@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { formatDue, isOverdue } from '../lib/dates.js';
 
 export const TASK_STATUS = { todo: 'To do', doing: 'Doing', done: 'Done' };
 export const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
@@ -97,6 +98,15 @@ export function StatusBadge({ status }) {
   return (
     <span className={`badge tone-${STATUS_TONE[status]}`}>{TASK_STATUS[status] || ISSUE_STATUS[status]}</span>
   );
+}
+
+// The text says "Overdue", so the warning never depends on color alone.
+export function DueBadge({ task }) {
+  if (!task.dueDate) return null;
+  const when = formatDue(task.dueDate);
+  return isOverdue(task)
+    ? <span className="badge badge-due tone-risk">Overdue · {when}</span>
+    : <span className="badge badge-due tone-todo">Due {when}</span>;
 }
 
 export function LockNote({ children }) {

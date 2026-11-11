@@ -204,6 +204,40 @@ test('task validation: bad status and removed required field fail', async () => 
   await assertFails(updateDoc(doc(db, 'tasks/assigned'), { status: 'blocked' }));
   await assertFails(updateDoc(doc(db, 'tasks/assigned'), { description: deleteField() }));
 });
+test('task validation: an unknown extra field fails', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', null, { priority: 'high' })));
+  await assertFails(updateDoc(doc(asUser('alice'), 'tasks/assigned'), { priority: 'high' }));
+});
+
+// ---- task due dates (seeded tasks have no dueDate, like tasks made before the field existed) ----
+test('dueDate: a task can be created with a date or with null', async () => {
+  const db = asUser('bob');
+  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('bob', null, { dueDate: '2026-11-15' })));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t2'), task('bob', 'alice', { dueDate: null })));
+});
+test('dueDate: malformed values fail', async () => {
+  const db = asUser('bob');
+  await assertFails(setDoc(doc(db, 'tasks/t1'), task('bob', null, { dueDate: 'Nov 15' })));
+  await assertFails(setDoc(doc(db, 'tasks/t2'), task('bob', null, { dueDate: 20261115 })));
+  await assertFails(setDoc(doc(db, 'tasks/t3'), task('bob', null, { dueDate: when })));
+  await assertFails(setDoc(doc(db, 'tasks/t4'), task('bob', null, { dueDate: '2026-11-15T00:00' })));
+});
+test('dueDate: a task without the field can still be claimed and updated', async () => {
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/open'), { assigneeId: 'bob' }));
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/open'), { status: 'doing' }));
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'tasks/assigned'), { status: 'done' }));
+});
+test('dueDate: the assignee can set, change and clear it', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: '2026-11-15' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: '2026-12-01' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: null }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: deleteField() }));
+});
+test('dueDate: a non-assignee cannot set it, and a claim cannot set it', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/assigned'), { dueDate: '2026-11-15' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/open'), { assigneeId: 'bob', dueDate: '2026-11-15' }));
+});
 test('assignee can delete; non-assignee and unassigned deletes fail', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'tasks/assigned')));
   await assertFails(deleteDoc(doc(asUser('alice'), 'tasks/open')));

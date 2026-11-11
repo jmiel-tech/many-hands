@@ -48,7 +48,7 @@ export async function deleteIssue(id) {
   await deleteDoc(doc(db, 'issues', id));
 }
 
-export async function createTask(uid, { issueId, title, description, status, assigneeId }) {
+export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'tasks'), {
     issueId,
@@ -56,6 +56,7 @@ export async function createTask(uid, { issueId, title, description, status, ass
     description,
     status,
     assigneeId,
+    dueDate: dueDate || null,
     createdBy: uid,
     createdAt: serverTimestamp(),
   });

@@ -66,8 +66,16 @@ service cloud.firestore {
     }
 
     // ---- tasks/{id} ----
+    // dueDate is optional, so tasks created before it existed stay valid.
+    function validDueDate() {
+      return !('dueDate' in incoming())
+        || incoming().dueDate == null
+        || (incoming().dueDate is string && incoming().dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'));
+    }
     function validTask() {
-      return hasExactly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])
+      return incoming().keys().hasAll(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])
+        && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt', 'dueDate'])
+        && validDueDate()
         && incoming().issueId is string
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)

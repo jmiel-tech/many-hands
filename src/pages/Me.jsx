@@ -6,12 +6,13 @@ import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
 import { Avatar, firstName } from '../components/ui.jsx';
 import { DetailRows } from './MemberProfile.jsx';
+import { bySoonestDue } from '../lib/dates.js';
 
 export default function Me() {
   const { user, member, logOut } = useAuth();
   const { issues, tasks } = useData();
   const myIssues = issues.filter((i) => i.ownerId === user.uid);
-  const myTasks = tasks.filter((t) => t.assigneeId === user.uid);
+  const myTasks = tasks.filter((t) => t.assigneeId === user.uid).sort(bySoonestDue);
 
   return (
     <>

@@ -4,7 +4,7 @@ import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { issueHealth } from '../lib/health.js';
 import { takeTask } from '../lib/api.js';
-import { ErrorNote, HealthBadge, ISSUE_STATUS, LockNote, StatusBadge, firstName } from './ui.jsx';
+import { DueBadge, ErrorNote, HealthBadge, ISSUE_STATUS, LockNote, StatusBadge, firstName } from './ui.jsx';
 
 const BAR_COLOR = { Covered: 'var(--covered-fg)', Thin: '#C98A1B', 'At risk': 'var(--risk-fg)', Orphaned: 'var(--orphan-fg)' };
 
@@ -32,6 +32,7 @@ export function OpenTaskCard({ task, issueTitle, large }) {
       {task.description && <p className="clamp muted">{task.description}</p>}
       <div className="task-card-foot">
         <StatusBadge status={task.status} />
+        <DueBadge task={task} />
         <span className="muted-sm">No one yet</span>
         <TakeButton taskId={task.id} />
       </div>
@@ -51,6 +52,7 @@ export function HeldTaskCard({ task }) {
         <h3><Link to={taskPath(task)} className="stretched">{task.title}</Link></h3>
         {mine ? <span className="badge tone-accent">Yours</span> : <StatusBadge status={task.status} />}
       </div>
+      <DueBadge task={task} />
       {mine ? (
         <>
           <span className="muted">{TASK_LABEL[task.status]}</span>
@@ -107,6 +109,7 @@ export function MyTaskCard({ task }) {
         <StatusBadge status={task.status} />
       </div>
       <span className="muted">{issue?.title || 'Issue removed'}</span>
+      <DueBadge task={task} />
     </Link>
   );
 }
