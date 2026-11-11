@@ -221,6 +221,21 @@ test('the owner can create a task on their issue, assigned to anyone or no one',
 test('a user without edit access cannot create a task', async () => {
   await assertFails(setDoc(doc(asUser('bob'), 'tasks/t1'), task('bob', null)));
 });
+test('owner can make an issue editable by everyone; others cannot toggle it', async () => {
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: true }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { editableByAll: false }));
+});
+test('when editable by all, any member can edit the issue and add tasks, but not delete it or change access', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: true });
+  });
+  const db = asUser('bob');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed' }));
+  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('bob', null)));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editableByAll: false }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
+  await assertFails(deleteDoc(doc(db, 'issues/issue1')));
+});
 test('an issue that still carries the old editableByAll field can be edited by its owner', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: false });

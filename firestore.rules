@@ -109,10 +109,11 @@ service cloud.firestore {
 
     // ---- issues/{id} ----
     // Everyone can read. editorIds lists who can edit the issue and create tasks on it; the owner is always in it.
+    // editableByAll (optional) gives that same access to every member, including ones who join later.
     function validIssue() {
       return incoming().keys().hasAll(['title', 'description', 'status', 'ownerId', 'editorIds', 'createdAt'])
         && incoming().keys().hasOnly(['title', 'description', 'status', 'ownerId', 'editorIds', 'createdAt', 'dueDate', 'editableByAll'])
-        && (!('editableByAll' in incoming()) || incoming().editableByAll is bool) // leftover on issues saved by an earlier build
+        && (!('editableByAll' in incoming()) || incoming().editableByAll is bool)
         && validDueDate()
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
@@ -124,7 +125,8 @@ service cloud.firestore {
     // The owner can always edit, even on issues created before editorIds existed.
     function canEditIssue(issue) {
       return issue.ownerId == uid()
-        || ('editorIds' in issue && uid() in issue.editorIds);
+        || ('editorIds' in issue && uid() in issue.editorIds)
+        || ('editableByAll' in issue && issue.editableByAll == true);
     }
     // Editors who aren't the owner can only change the issue's content.
     function isContentEdit() {
