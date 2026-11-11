@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData, canEditIssue } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createIssue, updateIssue } from '../lib/api.js';
+import { EditorPicker } from './IssueAccess.jsx';
 import { Avatar, ErrorNote, FormHead, ISSUE_STATUS, LockNote, Modal, Segmented, firstName } from '../components/ui.jsx';
 
 export default function IssueForm() {
@@ -63,20 +64,7 @@ export default function IssueForm() {
           <textarea className="field" rows={4} maxLength={2000} placeholder="What's this about? Any dates or places?" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <Segmented label="Status" name="issue-status" options={ISSUE_STATUS} value={status} onChange={setStatus} />
-        {isOwner && others.length > 0 && (
-          <fieldset className="assign">
-            <legend className="field-label">Give edit access</legend>
-            <div className="assign-list">
-              {others.map((p) => (
-                <label className="assign-row" key={p.id}>
-                  <input type="checkbox" checked={editorIds.includes(p.id)} onChange={() => toggleEditor(p.id)} />
-                  <Avatar id={p.id} name={p.name} size={34} />
-                  <span className="assign-name">{p.name}{editorIds.includes(p.id) && <small>Can edit and add tasks</small>}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        )}
+        {isOwner && others.length > 0 && <EditorPicker people={others} selected={editorIds} onToggle={toggleEditor} />}
         <div className="note-row">
           <Avatar id={issue?.ownerId ?? user.uid} name={isOwner ? member.name : nameOf(issue.ownerId)} size={36} />
           <span><strong>Owner: {isOwner ? `${member.name} (you)` : nameOf(issue.ownerId)}.</strong> Everyone can read this issue. Only the owner and people with edit access can edit it or add tasks. Only the owner can delete it.</span>

@@ -94,6 +94,7 @@ export default function IssueDetail() {
             <Avatar id={issue.ownerId} name={ownerName} size={28} />
             Owner: {isOwner ? 'you' : ownerName}
           </Link>
+          {isOwner && <Link to={`/issues/${issue.id}/access`} className="pill pill-plain pill-sm">Edit access…</Link>}
           {!canEdit && <LockNote>Only {firstName(ownerName)} and people they've given edit access can edit this issue or add tasks.</LockNote>}
         </div>
         <div className="hero-actions hero-actions-row">
