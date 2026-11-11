@@ -6,3 +6,6 @@ dev-dist/
 .firebaserc
 .env.local
 .claude/
+# Local secrets for `wrangler dev` (the OpenRouter key). Never commit.
+worker/.dev.vars
+worker/.wrangler/

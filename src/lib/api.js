@@ -87,12 +87,13 @@ export async function deleteTask(id) {
 
 export async function addComment(uid, taskId, text) {
   requireOnline();
-  await addDoc(collection(db, 'comments'), {
+  const ref = await addDoc(collection(db, 'comments'), {
     taskId,
     authorId: uid,
     text,
     createdAt: serverTimestamp(),
   });
+  return ref.id;
 }
 
 export async function updateComment(id, text) {

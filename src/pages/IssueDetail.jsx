@@ -124,7 +124,11 @@ export default function IssueDetail() {
         <HealthRing assigned={health.assigned} total={health.total} />
         <div className="dark-copy">
           <HealthBadge label={health.label} />
-          <p className="dark-sentence">{healthSentence(health)}</p>
+          <p className="dark-sentence words">
+            {healthSentence(health).split(' ').map((word, i) => (
+              <span key={i} className="word" style={{ '--i': i }}>{word} </span>
+            ))}
+          </p>
           <div className="tiles">
             <button type="button" className="tile" onClick={() => scrollTo('group-doing')}><span className="tile-n">{started}</span><span>Covered</span></button>
             <button type="button" className="tile" onClick={() => scrollTo('group-todo')}><span className="tile-n">{groups.todo.length}</span><span>Thin</span></button>

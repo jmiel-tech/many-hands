@@ -1,0 +1,19 @@
+# Many Hands chat proxy. Holds the OpenRouter key so the browser never sees it.
+# The key is a secret, never a var:  npx wrangler secret put OPENROUTER_API_KEY
+name = "many-hands-chat"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Your Firebase project ID (src/firebase.config.js > projectId). ID tokens from any other project are rejected.
+FIREBASE_PROJECT_ID = "tasks-f16b8"
+# Comma-separated origins allowed to call this Worker. Origins only: no path, no trailing slash.
+ALLOWED_ORIGINS = "https://jmiel-tech.github.io,http://localhost:5173"
+# Sent to OpenRouter as HTTP-Referer.
+SITE_URL = "https://jmiel-tech.github.io/many-hands/"
+
+# Per-user rate limit counters. Create the namespace once and paste its id here:
+#   npx wrangler kv namespace create RATE_LIMIT
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

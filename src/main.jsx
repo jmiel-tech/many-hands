@@ -1,11 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
-import { applyTheme, readTheme, watchSystemTheme } from './lib/theme.js';
+import { initMotion } from './lib/motion.js';
 import './styles.css';
 
-applyTheme(readTheme());
-watchSystemTheme();
+initMotion();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

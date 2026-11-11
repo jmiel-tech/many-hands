@@ -47,23 +47,17 @@ export function Logo({ size = 26 }) {
   );
 }
 
-const AVATAR_COLORS = [
-  ['#F9E1D0', '#7A3410'],
-  ['#DCEBF7', '#1E4A73'],
-  ['#E5F1DD', '#2F5A1E'],
-  ['#EDE3F6', '#4F2C73'],
-  ['#FCEFC9', '#6B4A00'],
-];
+// Five color pairs, defined per theme in theme.css (--avatar-N-bg / --avatar-N-fg).
+const AVATAR_TONES = 5;
 
 export function Avatar({ id = '', name = '', size = 36 }) {
   const initials = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
   const hash = [...id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  const [background, color] = AVATAR_COLORS[hash % AVATAR_COLORS.length];
   return (
     <span
-      className="avatar"
+      className={`avatar avatar-tone-${hash % AVATAR_TONES}`}
       aria-hidden="true"
-      style={{ width: size, height: size, background, color, fontSize: Math.round(size * 0.36) }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
       {initials}
     </span>
