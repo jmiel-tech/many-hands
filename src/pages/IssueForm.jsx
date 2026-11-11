@@ -20,7 +20,6 @@ export default function IssueForm() {
   const [status, setStatus] = useState(issue?.status || 'open');
   const [dueDate, setDueDate] = useState(issue?.dueDate || '');
   const [editorIds, setEditorIds] = useState(() => (issue?.editorIds || []).filter((id) => id !== issue?.ownerId));
-  const [everyone, setEveryone] = useState(issue?.editableByAll === true);
   const { busy, error, run } = useAction();
 
   const close = () => navigate(isEdit ? `/issues/${issueId}` : '/issues');
@@ -43,10 +42,10 @@ export default function IssueForm() {
     run(async () => {
       if (isEdit) {
         // Only the owner can change who has edit access.
-        await updateIssue(issueId, isOwner ? { ...values, editorIds: [issue.ownerId, ...editorIds], editableByAll: everyone } : values);
+        await updateIssue(issueId, isOwner ? { ...values, editorIds: [issue.ownerId, ...editorIds] } : values);
         close();
       } else {
-        const id = await createIssue(user.uid, { ...values, editorIds: [user.uid, ...editorIds], editableByAll: everyone });
+        const id = await createIssue(user.uid, { ...values, editorIds: [user.uid, ...editorIds] });
         navigate(`/issues/${id}`);
       }
     });
@@ -73,7 +72,7 @@ export default function IssueForm() {
           </span>
         </label>
         <Segmented label="Status" name="issue-status" options={ISSUE_STATUS} value={status} onChange={setStatus} />
-        {isOwner && <EditorPicker people={others} selected={editorIds} onToggle={toggleEditor} everyone={everyone} onEveryone={setEveryone} />}
+        {isOwner && others.length > 0 && <EditorPicker people={others} selected={editorIds} onToggle={toggleEditor} />}
         <div className="note-row">
           <Avatar id={issue?.ownerId ?? user.uid} name={isOwner ? member.name : nameOf(issue.ownerId)} size={36} />
           <span><strong>Owner: {isOwner ? `${member.name} (you)` : nameOf(issue.ownerId)}.</strong> Everyone can read this issue. Only the owner and people with edit access can edit it or add tasks. Only the owner can delete it.</span>
