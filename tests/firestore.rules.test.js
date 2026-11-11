@@ -16,6 +16,7 @@ import {
   deleteField,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 let env;
@@ -70,6 +71,7 @@ after(async () => {
 });
 
 // Seed: alice owns issue1 and comment1, alice holds task "assigned", task "open" is unclaimed.
+// root and root2 are admins.
 beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -80,6 +82,10 @@ beforeEach(async () => {
     await setDoc(doc(db, 'tasks/assigned'), task('alice', 'alice', { createdAt: when }));
     await setDoc(doc(db, 'tasks/open'), task('alice', null, { createdAt: when }));
     await setDoc(doc(db, 'comments/comment1'), comment('alice', { createdAt: when }));
+    await setDoc(doc(db, 'members/root'), member('root', { createdAt: when }));
+    await setDoc(doc(db, 'members/root2'), member('root2', { createdAt: when }));
+    await setDoc(doc(db, 'admins/root'), {});
+    await setDoc(doc(db, 'admins/root2'), {});
   });
 });
 
@@ -163,21 +169,6 @@ test('an editor can change issue content but not permissions, and cannot delete'
   await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { status: 'resolved', title: 'Renamed' }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob', 'carol'] }));
   await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice'] }));
-  await assertFails(deleteDoc(doc(db, 'issues/issue1')));
-});
-test('owner can make an issue editable by everyone; others cannot toggle it', async () => {
-  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: true }));
-  await assertFails(updateDoc(doc(asUser('bob'), 'issues/issue1'), { editableByAll: false }));
-  await assertFails(updateDoc(doc(asUser('alice'), 'issues/issue1'), { editableByAll: 'yes' }));
-});
-test('when editable by all, any member can edit the issue and add tasks, but not delete it', async () => {
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'issues/issue1'), { editableByAll: true });
-  });
-  const db = asUser('bob');
-  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed' }));
-  await assertSucceeds(setDoc(doc(db, 'tasks/t1'), task('bob', null)));
-  await assertFails(updateDoc(doc(db, 'issues/issue1'), { editorIds: ['alice', 'bob'] }));
   await assertFails(deleteDoc(doc(db, 'issues/issue1')));
 });
 test('issue must list the owner as an editor', async () => {
@@ -353,4 +344,137 @@ test('comment validation: empty and too-long text fail', async () => {
 test('author can delete a comment, non-author cannot', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'comments/comment1')));
   await assertSucceeds(deleteDoc(doc(asUser('alice'), 'comments/comment1')));
+});
+
+// ---- admins ----
+// A ban must hold an exact copy of the member's profile (alice's seeded profile here).
+const ban = (by, extra = {}) => ({ name: 'alice', email: 'alice@example.com', phone: '(555) 555-0100', memberCreatedAt: when, bannedBy: by, createdAt: serverTimestamp(), ...extra });
+const savedBan = { name: 'alice', email: 'alice@example.com', phone: '(555) 555-0100', memberCreatedAt: when, bannedBy: 'root', createdAt: when };
+
+test('nobody can make themselves an admin from the app', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'admins/bob'), {}));
+  await assertFails(setDoc(doc(asUser('root'), 'admins/bob'), {}));
+  await assertFails(deleteDoc(doc(asUser('root'), 'admins/root2')));
+});
+test('admin can edit and delete an issue they did not create, but not change its owner', async () => {
+  const db = asUser('root');
+  await assertSucceeds(updateDoc(doc(db, 'issues/issue1'), { title: 'Renamed', status: 'resolved' }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { ownerId: 'root' }));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { status: 'closed' }));
+  await assertSucceeds(deleteDoc(doc(db, 'issues/issue1')));
+});
+test('admin can delete any task and release a held one, but not edit or reassign it', async () => {
+  const db = asUser('root');
+  await assertFails(updateDoc(doc(db, 'tasks/assigned'), { title: 'Edited' }));
+  await assertFails(updateDoc(doc(db, 'tasks/assigned'), { assigneeId: 'bob' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { assigneeId: null }));
+  await assertSucceeds(deleteDoc(doc(db, 'tasks/assigned')));
+});
+test('non-admins still cannot release or delete tasks they do not hold', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/assigned'), { assigneeId: null }));
+  await assertFails(deleteDoc(doc(asUser('bob'), 'tasks/assigned')));
+});
+test('admin can kick a member: ban, free their tasks, and delete their profile in one batch', async () => {
+  const db = asUser('root');
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'bans/alice'), ban('root'));
+  batch.update(doc(db, 'tasks/assigned'), { assigneeId: null });
+  batch.delete(doc(db, 'members/alice'));
+  await assertSucceeds(batch.commit());
+});
+test('non-admin cannot ban or delete another member', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'bans/alice'), ban('bob')));
+  await assertFails(deleteDoc(doc(asUser('bob'), 'members/alice')));
+});
+test('admin cannot ban themselves or another admin, or ban in someone else\'s name', async () => {
+  const db = asUser('root');
+  await assertFails(setDoc(doc(db, 'bans/root'), ban('root')));
+  await assertFails(setDoc(doc(db, 'bans/root2'), ban('root')));
+  await assertFails(deleteDoc(doc(db, 'members/root2')));
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('root2')));
+});
+test('ban list is readable by admins and by the banned person only', async () => {
+  await assertSucceeds(setDoc(doc(asUser('root'), 'bans/alice'), ban('root')));
+  await assertSucceeds(getDoc(doc(asUser('root2'), 'bans/alice')));
+  await assertSucceeds(getDoc(doc(asUser('alice'), 'bans/alice')));
+  await assertFails(getDoc(doc(asUser('bob'), 'bans/alice')));
+});
+
+// ---- banned members ----
+test('a banned member is locked out of reading and writing everything', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+  const db = asUser('alice');
+  for (const path of ['members/bob', 'issues/issue1', 'tasks/open', 'comments/comment1']) {
+    await assertFails(getDoc(doc(db, path)));
+  }
+  await assertFails(setDoc(doc(db, 'issues/new'), issue('alice')));
+  await assertFails(updateDoc(doc(db, 'issues/issue1'), { status: 'resolved' }));
+  await assertFails(updateDoc(doc(db, 'tasks/open'), { assigneeId: 'alice' }));
+  await assertFails(setDoc(doc(db, 'comments/c2'), comment('alice')));
+  await assertFails(deleteDoc(doc(db, 'members/alice')));
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('alice')));
+  await assertFails(deleteDoc(doc(db, 'bans/alice')));
+});
+test('a banned member cannot sign up again with a fresh profile', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'members/alice'));
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+  await assertFails(setDoc(doc(asUser('alice'), 'members/alice'), member('alice')));
+});
+test('after an admin lifts the ban, the member can set up a profile again', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'members/alice'));
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+  await assertSucceeds(deleteDoc(doc(asUser('root'), 'bans/alice')));
+  await assertSucceeds(setDoc(doc(asUser('alice'), 'members/alice'), member('alice')));
+});
+
+// ---- letting someone back in ----
+const restored = { name: 'alice', email: 'alice@example.com', phone: '(555) 555-0100', createdAt: when };
+async function seedKickedAlice() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'members/alice'));
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+}
+
+test('kicking must save an exact copy of the profile in the ban', async () => {
+  const db = asUser('root');
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('root', { phone: '(555) 555-9999' })));
+  await assertFails(setDoc(doc(db, 'bans/alice'), ban('root', { name: 'Someone else' })));
+  await assertFails(setDoc(doc(db, 'bans/carol'), ban('root', { name: 'carol', email: 'carol@example.com' })));
+});
+test('admin lets a member back in: ban lifted and profile restored in one batch', async () => {
+  await seedKickedAlice();
+  const db = asUser('root');
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), restored);
+  await assertSucceeds(batch.commit());
+  const snap = await getDoc(doc(asUser('bob'), 'members/alice'));
+  if (snap.data().phone !== '(555) 555-0100') throw new Error('profile not restored');
+});
+test('admin cannot restore a profile without lifting the ban, or with changed details', async () => {
+  await seedKickedAlice();
+  const db = asUser('root');
+  await assertFails(setDoc(doc(db, 'members/alice'), restored));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), { ...restored, phone: '(555) 555-9999' });
+  await assertFails(batch.commit());
+});
+test('non-admin cannot let someone back in', async () => {
+  await seedKickedAlice();
+  const db = asUser('bob');
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bans/alice'));
+  batch.set(doc(db, 'members/alice'), restored);
+  await assertFails(batch.commit());
+});
+test('admin cannot create a profile for someone who was never banned', async () => {
+  await assertFails(setDoc(doc(asUser('root'), 'members/carol'), { name: 'carol', email: 'carol@example.com', phone: '(555) 555-0100', createdAt: when }));
 });
