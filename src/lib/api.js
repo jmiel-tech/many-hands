@@ -6,6 +6,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
@@ -103,4 +104,37 @@ export async function updateComment(id, text) {
 export async function deleteComment(id) {
   requireOnline();
   await deleteDoc(doc(db, 'comments', id));
+}
+
+// ---- Admin ----
+
+// Deletes an issue and every task on it in one go. Only admins may delete tasks they don't hold.
+export async function adminDeleteIssue(issueId, taskIds) {
+  requireOnline();
+  const batch = writeBatch(db);
+  taskIds.forEach((id) => batch.delete(doc(db, 'tasks', id)));
+  batch.delete(doc(db, 'issues', issueId));
+  await batch.commit();
+}
+
+// Removes a member: records the ban, deletes their profile, and frees the tasks they held.
+// Their login still exists, but the rules refuse everything they try while the ban is in place.
+export async function kickMember(adminUid, member, heldTaskIds) {
+  requireOnline();
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'bans', member.id), {
+    name: member.name,
+    email: member.email,
+    bannedBy: adminUid,
+    createdAt: serverTimestamp(),
+  });
+  heldTaskIds.forEach((id) => batch.update(doc(db, 'tasks', id), { assigneeId: null }));
+  batch.delete(doc(db, 'members', member.id));
+  await batch.commit();
+}
+
+// Lets a removed person back in. They set up their profile again the next time they log in.
+export async function unbanMember(uid) {
+  requireOnline();
+  await deleteDoc(doc(db, 'bans', uid));
 }

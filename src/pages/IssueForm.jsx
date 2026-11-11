@@ -8,7 +8,7 @@ import { Avatar, ErrorNote, FormHead, ISSUE_STATUS, LockNote, Modal, Segmented, 
 
 export default function IssueForm() {
   const { issueId } = useParams();
-  const { user, member } = useAuth();
+  const { user, member, isAdmin } = useAuth();
   const { issues, nameOf } = useData();
   const navigate = useNavigate();
   const issue = issues.find((i) => i.id === issueId);
@@ -20,7 +20,8 @@ export default function IssueForm() {
 
   const close = () => navigate(isEdit ? `/issues/${issueId}` : '/issues');
 
-  if (isEdit && issue?.ownerId !== user.uid) {
+  const isOwner = !isEdit || issue?.ownerId === user.uid;
+  if (isEdit && (!issue || (!isOwner && !isAdmin))) {
     return (
       <Modal title="Edit issue" onClose={close}>
         <FormHead title="Not yours to edit." />
@@ -47,7 +48,7 @@ export default function IssueForm() {
     <Modal title={isEdit ? 'Edit issue' : 'New issue'} onClose={close}>
       <FormHead
         title={isEdit ? 'Edit issue.' : 'New issue.'}
-        subtitle={isEdit ? "You started this one, so it's yours to change." : 'Start something the group can pitch in on.'}
+        subtitle={!isEdit ? 'Start something the group can pitch in on.' : isOwner ? "You started this one, so it's yours to change." : `You're editing ${firstName(nameOf(issue.ownerId))}'s issue as an admin.`}
       />
       <form className="form" aria-label={isEdit ? 'Edit issue' : 'New issue'} onSubmit={submit}>
         <label className="lbl">Title
@@ -57,10 +58,17 @@ export default function IssueForm() {
           <textarea className="field" rows={4} maxLength={2000} placeholder="What's this about? Any dates or places?" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <Segmented label="Status" name="issue-status" options={ISSUE_STATUS} value={status} onChange={setStatus} />
-        <div className="note-row">
-          <Avatar id={user.uid} name={member.name} size={36} />
-          <span><strong>Owner: {member.name} (you).</strong> Only you can edit or delete this issue. Anyone can add tasks to it.</span>
-        </div>
+        {isOwner ? (
+          <div className="note-row">
+            <Avatar id={user.uid} name={member.name} size={36} />
+            <span><strong>Owner: {member.name} (you).</strong> Only you can edit or delete this issue. Anyone can add tasks to it.</span>
+          </div>
+        ) : (
+          <div className="note-row">
+            <Avatar id={issue.ownerId} name={nameOf(issue.ownerId)} size={36} />
+            <span><strong>Owner: {nameOf(issue.ownerId)}.</strong> It stays theirs after you save.</span>
+          </div>
+        )}
         <ErrorNote>{error}</ErrorNote>
         <button type="submit" className="pill pill-lg" disabled={busy}>
           {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Create issue'}
