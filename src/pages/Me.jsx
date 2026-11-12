@@ -1,13 +1,69 @@
+import { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
-import { Avatar, Icons, ThemeSwitch, firstName } from '../components/ui.jsx';
+import { Avatar, ErrorNote, Icons, ThemeSwitch, firstName } from '../components/ui.jsx';
+import { useAction } from '../lib/errors.js';
 import { useTheme } from '../lib/theme.jsx';
 import { DetailRows } from './MemberProfile.jsx';
 import { bySoonestDue } from '../lib/dates.js';
+
+// Red button, then an "are you sure" box that also asks for the password, so it can't happen by accident.
+function DeleteAccount({ unfinishedTaskIds }) {
+  const { deleteAccount } = useAuth();
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState('');
+  const { busy, error, setError, run } = useAction();
+  const held = unfinishedTaskIds.length;
+
+  const cancel = () => {
+    setConfirming(false);
+    setPassword('');
+    setError('');
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    run(async () => {
+      try {
+        await deleteAccount(password, unfinishedTaskIds);
+      } catch (err) {
+        if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+          throw Object.assign(new Error('wrong password'), { friendly: "That password isn't right. Try again." });
+        }
+        throw err;
+      }
+    });
+  };
+
+  if (!confirming) {
+    return (
+      <button type="button" className="pill pill-danger center" onClick={() => setConfirming(true)}>Delete account</button>
+    );
+  }
+
+  return (
+    <form role="alertdialog" aria-label="Delete your account?" className="confirm center" onSubmit={submit}>
+      <span className="confirm-q">Are you sure you want to delete your account?</span>
+      <span>
+        This can't be undone. Your profile and login are deleted.
+        {held ? ` Your ${held} unfinished ${held === 1 ? 'task goes' : 'tasks go'} back to Unclaimed.` : ''}
+        {' '}Issues you started and comments you wrote stay, under "A former member".
+      </span>
+      <label className="lbl">Enter your password to confirm
+        <input className="field" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+      </label>
+      <ErrorNote>{error}</ErrorNote>
+      <div className="confirm-actions">
+        <button type="submit" className="pill pill-danger pill-sm" disabled={busy || !password}>{busy ? 'Deleting…' : 'Yes, delete my account'}</button>
+        <button type="button" className="pill pill-plain pill-sm" onClick={cancel} disabled={busy}>Cancel</button>
+      </div>
+    </form>
+  );
+}
 
 export default function Me() {
   const { user, member, isAdmin, logOut } = useAuth();
@@ -53,6 +109,7 @@ export default function Me() {
             <p className="empty">Nothing on your plate. <Link to="/">See open tasks</Link>.</p>
           )}
           <button type="button" className="textlink center muted-link" onClick={logOut}>Log out</button>
+          <DeleteAccount unfinishedTaskIds={myTasks.filter((t) => t.status !== 'done').map((t) => t.id)} />
         </div>
       </section>
       <Outlet />

@@ -27,6 +27,16 @@ export async function updateMember(uid, patch) {
   await updateDoc(doc(db, 'members', uid), patch);
 }
 
+// Deletes your own profile and puts your unfinished tasks back to Unclaimed, in one go.
+// Finished tasks keep your ID so the record of who did them stays. Your issues and comments stay too.
+export async function deleteOwnProfile(uid, unfinishedTaskIds) {
+  requireOnline();
+  const batch = writeBatch(db);
+  unfinishedTaskIds.forEach((id) => batch.update(doc(db, 'tasks', id), { assigneeId: null, status: 'todo' }));
+  batch.delete(doc(db, 'members', uid));
+  await batch.commit();
+}
+
 export async function createIssue(uid, { title, description, status, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'issues'), {

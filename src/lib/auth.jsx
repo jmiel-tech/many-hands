@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import {
   EmailAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser,
   onAuthStateChanged,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
@@ -12,7 +13,14 @@ import {
 } from 'firebase/auth';
 import { clearIndexedDbPersistence, doc, onSnapshot, terminate } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
-import { saveNewMember, updateMember } from './api.js';
+import { deleteOwnProfile, saveNewMember, updateMember } from './api.js';
+
+// Phones and emails shouldn't stay on a shared device after logging out or deleting an account.
+async function clearLocalDataAndReload() {
+  await terminate(db);
+  await clearIndexedDbPersistence(db).catch(() => {});
+  window.location.reload();
+}
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -23,6 +31,7 @@ export function AuthProvider({ children }) {
   const [banned, setBanned] = useState(undefined); // undefined = still loading
   const [isAdmin, setIsAdmin] = useState(false);
   const signingUp = useRef(false);
+  const deleting = useRef(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -37,7 +46,8 @@ export function AuthProvider({ children }) {
       doc(db, 'members', user.uid),
       (snap) => {
         // A missing doc in the cache proves nothing, so wait for the server's answer.
-        if (!snap.exists() && (snap.metadata.fromCache || signingUp.current)) return;
+        // While deleting an account, the profile goes before the login does. Don't flash the "finish your profile" screen.
+        if (!snap.exists() && (snap.metadata.fromCache || signingUp.current || deleting.current)) return;
         const data = snap.exists() ? { id: snap.id, ...snap.data() } : null;
         setMember(data);
         // After a verified email change, the Auth email is newer than the profile. Catch up here.
@@ -115,10 +125,26 @@ export function AuthProvider({ children }) {
       },
       async logOut() {
         await signOut(auth);
-        // Phones and emails shouldn't stay on a shared device after logging out.
-        await terminate(db);
-        await clearIndexedDbPersistence(db).catch(() => {});
-        window.location.reload();
+        await clearLocalDataAndReload();
+      },
+      // Permanently deletes the signed-in person's profile and login. Asks for the password first:
+      // Firebase needs a recent login to delete one, and it stops a borrowed, unlocked device doing it.
+      async deleteAccount(password, unfinishedTaskIds) {
+        const current = auth.currentUser;
+        await reauthenticateWithCredential(current, EmailAuthProvider.credential(current.email, password));
+        deleting.current = true;
+        let profileGone = false;
+        try {
+          await deleteOwnProfile(current.uid, unfinishedTaskIds);
+          profileGone = true;
+          await deleteUser(current);
+        } catch (e) {
+          deleting.current = false;
+          // If the profile went but the login didn't, show the "finish your profile" screen rather than a stale page.
+          if (profileGone) setMember(null);
+          throw e;
+        }
+        await clearLocalDataAndReload();
       },
     }),
     [user, member, banned, isAdmin],
