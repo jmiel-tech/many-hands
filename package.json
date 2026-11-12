@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/health.test.js tests/dates.test.js tests/filter.test.js tests/phone.test.js",
+    "test": "node --test tests/health.test.js tests/dates.test.js tests/filter.test.js tests/phone.test.js tests/chat-contract.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-many-hands \"node --test tests/firestore.rules.test.js\"",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-many-hands",
     "dev:emulator": "vite --mode emulator"

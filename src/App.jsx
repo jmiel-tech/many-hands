@@ -15,6 +15,8 @@ import TaskForm from './pages/TaskForm.jsx';
 import CalendarPage from './pages/Calendar.jsx';
 import Members from './pages/Members.jsx';
 import MemberProfile from './pages/MemberProfile.jsx';
+import Messages from './pages/Messages.jsx';
+import Conversation from './pages/Conversation.jsx';
 import Me from './pages/Me.jsx';
 import EditProfile from './pages/EditProfile.jsx';
 import Admin from './pages/Admin.jsx';
@@ -46,6 +48,8 @@ function Gate() {
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="members" element={<Members />} />
             <Route path="members/:memberId" element={<MemberProfile />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:conversationId" element={<Conversation />} />
             <Route path="me" element={<Me />}>
               <Route path="edit" element={<EditProfile />} />
             </Route>

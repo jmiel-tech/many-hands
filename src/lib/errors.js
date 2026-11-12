@@ -14,6 +14,9 @@ const MESSAGES = {
   unavailable: "Can't reach the server. Check your connection and try again.",
   'app/offline': "You're offline. This works again once you're back online.",
   'app/already-taken': 'Someone else just took this task.',
+  'app/invalid-conversation': 'This conversation could not be opened.',
+  'app/invalid-chat-message': 'Enter a message up to 2000 characters.',
+  'app/chat-not-allowed': "You can't send messages in this conversation.",
 };
 
 export function friendlyError(error) {

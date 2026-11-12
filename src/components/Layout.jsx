@@ -11,6 +11,7 @@ const LINKS = [
   { to: '/issues', label: 'Issues', icon: Icons.issues },
   { to: '/calendar', label: 'Calendar', icon: Icons.calendar },
   { to: '/members', label: 'Members', icon: Icons.members },
+  { to: '/messages', label: 'Messages', icon: Icons.messages },
   { to: '/me', label: 'Me', icon: Icons.me },
 ];
 const ADMIN_LINK = { to: '/admin', label: 'Admin', icon: Icons.admin };
