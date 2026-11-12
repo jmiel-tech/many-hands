@@ -414,13 +414,11 @@ textarea.field { padding: var(--space-3) var(--space-4); line-height: 1.4; resiz
 .comment-form .field { flex: 1; min-width: 0; background: var(--surface-raised); }
 .comment-form .pill { min-height: 54px; }
 
-<<<<<<< Updated upstream
 /* ---- Theme toggle (dark mode switch on Me and in the desktop sidebar) ---- */
 .theme-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%; min-height: 60px; padding: var(--space-3) var(--space-5); border: 0; border-radius: var(--radius-card-sm); background: var(--card-tint); color: var(--ink); font-size: 17px; font-weight: 500; text-align: left; }
 .theme-toggle:hover { background: var(--hover-tint); }
 .switch { position: relative; flex-shrink: 0; width: 51px; height: 31px; border-radius: var(--radius-md); background: var(--todo-bg); }
 .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: var(--switch-knob); box-shadow: var(--seg-shadow); transition: transform var(--dur-ui) var(--ease); }
-=======
 /* ---- Profile details ---- */
 .detail-rows { display: flex; flex-direction: column; padding: 4px 20px; border-radius: 20px; background: var(--bg-alt); }
 .detail-rows > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 52px; font-size: 16px; }
@@ -453,7 +451,6 @@ textarea.field { padding: var(--space-3) var(--space-4); line-height: 1.4; resiz
 .theme-toggle:hover { background: var(--hover); }
 .switch { position: relative; flex-shrink: 0; width: 51px; height: 31px; border-radius: 16px; background: var(--todo-bg); transition: background 0.2s var(--ease); }
 .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: transform 0.2s var(--ease); }
->>>>>>> Stashed changes
 [aria-checked='true'] .switch { background: var(--accent); }
 [aria-checked='true'] .switch::after { transform: translateX(20px); }
 .sidebar-theme { display: none; }
