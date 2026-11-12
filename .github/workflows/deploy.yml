@@ -29,6 +29,11 @@ jobs:
         env:
           # Assets load from /<repo-name>/, whatever the repo is called.
           VITE_BASE: /${{ github.event.repository.name }}/
+          # The assistant (src/assistant/). On by default; to switch it off, add a repository
+          # variable VITE_ENABLE_ASSISTANT = false (Settings > Secrets and variables > Actions > Variables)
+          # and re-run this workflow. The Worker URL is public; the model key lives only in the Worker.
+          VITE_ENABLE_ASSISTANT: ${{ vars.VITE_ENABLE_ASSISTANT || 'true' }}
+          VITE_CHAT_ENDPOINT: https://many-hands-chat.jmielk92.workers.dev
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useData, useOnline } from '../lib/data.jsx';
 import { useTheme } from '../lib/theme.jsx';
+import AssistantMount from '../assistant/index.jsx';
 import { Avatar, Icons, Loading, Logo } from './ui.jsx';
 
 const LINKS = [
@@ -26,7 +27,8 @@ export default function Layout() {
   // Scroll to the top on a new page, but not when a dialog opens over the current one.
   const page = pathname.replace(/\/(tasks\/.*|edit|new)$/, '');
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // 'instant', so the CSS smooth scrolling for in-page links doesn't animate a page change.
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [page]);
 
   return (
@@ -64,6 +66,7 @@ export default function Layout() {
         )}
         {loading ? <Loading /> : <Outlet />}
       </main>
+      {!loading && <AssistantMount />}
     </div>
   );
 }

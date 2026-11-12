@@ -17,7 +17,7 @@ export default defineConfig({
         name: 'Many Hands',
         short_name: 'Many Hands',
         description: 'See which tasks still need someone, and take one.',
-        theme_color: '#1F5E4E',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '.',

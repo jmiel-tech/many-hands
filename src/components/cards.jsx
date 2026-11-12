@@ -6,7 +6,7 @@ import { issueHealth } from '../lib/health.js';
 import { takeTask } from '../lib/api.js';
 import { DueBadge, ErrorNote, HealthBadge, ISSUE_STATUS, LockNote, StatusBadge, firstName } from './ui.jsx';
 
-const BAR_COLOR = { Covered: 'var(--covered-fg)', Thin: '#C98A1B', 'At risk': 'var(--risk-fg)', Orphaned: 'var(--orphan-fg)' };
+const BAR_COLOR = { Covered: 'var(--covered-fg)', Thin: 'var(--bar-thin)', 'At risk': 'var(--risk-fg)', Orphaned: 'var(--orphan-fg)' };
 
 export function TakeButton({ taskId }) {
   const { user } = useAuth();

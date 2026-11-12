@@ -44,7 +44,7 @@ export const Icons = {
 export function Logo({ size = 26 }) {
   return (
     <span className="logo" style={{ width: size, height: size, borderRadius: size / 3.2 }} aria-hidden="true">
-      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="#F2C46B" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <path d="M7 11V6.5a1.5 1.5 0 0 1 3 0V10" />
         <path d="M10 10V5a1.5 1.5 0 0 1 3 0v5" />
         <path d="M13 10V6a1.5 1.5 0 0 1 3 0v7" />
@@ -54,23 +54,17 @@ export function Logo({ size = 26 }) {
   );
 }
 
-const AVATAR_COLORS = [
-  ['#F9E1D0', '#7A3410'],
-  ['#DCEBF7', '#1E4A73'],
-  ['#E5F1DD', '#2F5A1E'],
-  ['#EDE3F6', '#4F2C73'],
-  ['#FCEFC9', '#6B4A00'],
-];
+// Five color pairs, defined per theme in theme.css (--avatar-N-bg / --avatar-N-fg).
+const AVATAR_TONES = 5;
 
 export function Avatar({ id = '', name = '', size = 36 }) {
   const initials = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
   const hash = [...id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  const [background, color] = AVATAR_COLORS[hash % AVATAR_COLORS.length];
   return (
     <span
-      className="avatar"
+      className={`avatar avatar-tone-${hash % AVATAR_TONES}`}
       aria-hidden="true"
-      style={{ width: size, height: size, background, color, fontSize: Math.round(size * 0.36) }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
       {initials}
     </span>

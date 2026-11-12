@@ -1,0 +1,205 @@
+/* Many Hands theme. Every color, spacing value, radius, easing and duration lives here. */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Type ---- */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --text-body: 17px;
+  --leading-body: 1.5;
+  --tracking-body: -0.01em;
+  --text-hero: clamp(44px, 8vw, 96px);
+  --text-section: clamp(32px, 5vw, 56px);
+  --tracking-head: -0.03em;
+  --leading-head: 1.05;
+
+  /* ---- Spacing (4px scale) ---- */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-18: 72px;
+  --space-22: 88px;
+  --space-24: 96px;
+  --gutter: var(--space-5);
+  --section: var(--space-16);
+
+  /* ---- Sizes ---- */
+  --tap: 44px;
+  --topbar-h: 52px;
+  --nav-h: 78px;
+  --sidebar-w: 232px;
+
+  /* ---- Radii ---- */
+  --radius-bar: 3px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-card-sm: 24px;
+  --radius-card: 28px;
+  --radius-seg: 30px;
+  --radius-pill: 980px;
+
+  /* ---- Motion ---- */
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-ui: 0.25s;
+  --dur-pop: 0.6s;
+  --dur-reveal: 0.9s;
+  --stagger: 100ms;
+  --rise: 40px;
+  --pop-rise: 16px;
+  --chat-delay: 0.6s;
+
+  /* ---- Colors: surfaces ---- */
+  --bg: #ffffff;
+  --bg-alt: #f5f5f7;
+  --bg-dark: #1d1d1f;
+  --bg-dark-2: #2c2c2e;
+  --bg-dark-3: #3a3a3c;
+  --surface: #ffffff;          /* cards on gray sections */
+  --card-tint: #f5f5f7;        /* cards on white sections */
+  --surface-raised: #ffffff;   /* items inside a tinted card */
+  --fill: #f5f5f7;             /* inputs, segmented controls */
+  --chrome: rgba(255, 255, 255, 0.72);
+  --chrome-scrolled: rgba(255, 255, 255, 0.92);
+  --chrome-solid: rgba(255, 255, 255, 0.94);
+  --separator: rgba(0, 0, 0, 0.08);
+  --separator-strong: rgba(0, 0, 0, 0.16);
+  --hover-tint: rgba(0, 0, 0, 0.05);
+  --empty-bg: rgba(0, 0, 0, 0.03);         /* empty states on white sections */
+  --empty-on-alt: rgba(255, 255, 255, 0.6); /* empty states on gray sections (keeps secondary text AA) */
+  --backdrop: rgba(0, 0, 0, 0.42);
+
+  /* ---- Colors: text ---- */
+  --ink: #1d1d1f;
+  --ink-2: #6e6e73;
+  --ink-inv: #f5f5f7;
+  --ink-inv-2: #a1a1a6;
+
+  /* ---- Colors: accent ---- */
+  --accent: #1f5e4e;           /* button fill */
+  --on-accent: #ffffff;
+  --link: #1f5e4e;
+  --link-hover: #174a3d;
+  --accent-on-dark: #7fd8b8;   /* links and focus on dark bands */
+  --accent-soft: rgba(31, 94, 78, 0.1);
+  --accent-ring: rgba(31, 94, 78, 0.18);
+  --pill-glow: rgba(255, 255, 255, 0.12);
+  --logo-bg: #1f5e4e;
+  --logo-mark: #f2c46b;
+  --ring-track: #3a3a3c;
+  --ring-fill: #7fd8b8;
+
+  /* ---- Colors: status (always paired with a text label and icon) ---- */
+  --covered-fg: #1b6b43;
+  --covered-bg: #e3f3e8;
+  --thin-fg: #8a5300;
+  --thin-bg: #fdf0d5;
+  --risk-fg: #a6370b;
+  --risk-bg: #fce5da;
+  --orphan-fg: #5e2f80;
+  --orphan-bg: #f0e7f7;
+  --open-fg: #284d8c;
+  --open-bg: #e6eefa;
+  --todo-bg: #ececf0;
+  --bar-thin: #c98a1b;
+  --danger: #b42318;
+  --danger-bg: #fdecea;
+  --on-danger: #ffffff;
+  --switch-knob: #ffffff;
+  --confirm-ink: #7a2c08;
+  --blocked-ink: #6b4a00;
+
+  /* ---- Colors: avatars ---- */
+  --avatar-0-bg: #f9e1d0; --avatar-0-fg: #7a3410;
+  --avatar-1-bg: #dcebf7; --avatar-1-fg: #1e4a73;
+  --avatar-2-bg: #e5f1dd; --avatar-2-fg: #2f5a1e;
+  --avatar-3-bg: #ede3f6; --avatar-3-fg: #4f2c73;
+  --avatar-4-bg: #fcefc9; --avatar-4-fg: #6b4a00;
+
+  /* ---- Elevation ---- */
+  --seg-on: #ffffff;
+  --seg-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.28);
+  --shadow-side: -16px 0 60px rgba(0, 0, 0, 0.18);
+  --shadow-fab: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode (the team's toggle). index.html and src/lib/theme.jsx set data-theme on <html>.
+   Only color tokens change here; the palette follows the team's dark colors. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #121214;
+  --bg-alt: #1c1c1e;
+  --bg-dark: #242428;
+  --bg-dark-2: #323236;
+  --bg-dark-3: #404045;
+  --surface: #2a2a2e;
+  --card-tint: #1c1c1e;
+  --surface-raised: #2a2a2e;
+  --fill: #2a2a2e;
+  --chrome: rgba(18, 18, 20, 0.72);
+  --chrome-scrolled: rgba(18, 18, 20, 0.92);
+  --chrome-solid: rgba(18, 18, 20, 0.94);
+  --separator: rgba(255, 255, 255, 0.1);
+  --separator-strong: rgba(255, 255, 255, 0.18);
+  --hover-tint: rgba(255, 255, 255, 0.07);
+  --empty-bg: rgba(255, 255, 255, 0.04);
+  --empty-on-alt: rgba(255, 255, 255, 0.04);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --ink: #f5f5f7;
+  --ink-2: #a1a1a6;
+  --accent: #7fd8b8;
+  --on-accent: #0d2b23;
+  --link: #7fd8b8;
+  --link-hover: #a2e6cd;
+  --accent-soft: rgba(127, 216, 184, 0.16);
+  --accent-ring: rgba(127, 216, 184, 0.28);
+  --pill-glow: rgba(255, 255, 255, 0.12);
+  --covered-fg: #8be0b0;
+  --covered-bg: #17392a;
+  --thin-fg: #f2c46b;
+  --thin-bg: #3b2d10;
+  --risk-fg: #ffa07c;
+  --risk-bg: #46200f;
+  --orphan-fg: #d6b0f2;
+  --orphan-bg: #33213f;
+  --open-fg: #a5c4f7;
+  --open-bg: #1b2b46;
+  --todo-bg: #38383c;
+  --bar-thin: #e0a63a;
+  --danger: #ff8a80;
+  --danger-bg: #45191a;
+  --on-danger: #2b0906;
+  --confirm-ink: #ffa07c;
+  --blocked-ink: #f2c46b;
+  --avatar-0-bg: #4a2a17; --avatar-0-fg: #f9d2b6;
+  --avatar-1-bg: #17324d; --avatar-1-fg: #c4ddf5;
+  --avatar-2-bg: #1f3a16; --avatar-2-fg: #cbe8b8;
+  --avatar-3-bg: #35204d; --avatar-3-fg: #e0cdf3;
+  --avatar-4-bg: #3f3007; --avatar-4-fg: #f6e0a0;
+  --seg-on: #48484c;
+  --seg-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.7);
+  --shadow-side: -16px 0 60px rgba(0, 0, 0, 0.6);
+  --shadow-fab: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Desktop layout tokens. */
+@media (min-width: 900px) {
+  :root { --gutter: var(--space-10); --section: var(--space-22); }
+}
