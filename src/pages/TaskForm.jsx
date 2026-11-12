@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
-import { useData, canEditIssue } from '../lib/data.jsx';
+import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createTask, updateTask } from '../lib/api.js';
 import { Avatar, ErrorNote, FormHead, LockNote, Modal, Segmented, TASK_STATUS, firstName } from '../components/ui.jsx';
@@ -36,18 +36,8 @@ export default function TaskForm() {
     );
   }
 
-  if (!isEdit && !canEditIssue(issues.find((i) => i.id === routeIssueId), user.uid)) {
-    return (
-      <Modal title="New task" onClose={close}>
-        <FormHead title="Not yours to add to." />
-        <div className="form"><LockNote>Only the issue's owner and people they've given edit access can add tasks to it.</LockNote></div>
-      </Modal>
-    );
-  }
-
   // Me first, then everyone else.
   const people = [...members].sort((a, b) => (b.id === user.uid) - (a.id === user.uid));
-  const editableIssues = issues.filter((i) => canEditIssue(i, user.uid));
   const unassigned = assigneeId === '';
   const holder = unassigned ? null : assigneeId === user.uid ? 'you' : firstName(nameOf(assigneeId));
 
@@ -83,7 +73,7 @@ export default function TaskForm() {
         {!isEdit && (
           <label className="lbl">Issue
             <select className="field select" value={issueId} onChange={(e) => setIssueId(e.target.value)}>
-              {editableIssues.map((i) => <option key={i.id} value={i.id}>{i.title}</option>)}
+              {issues.map((i) => <option key={i.id} value={i.id}>{i.title}</option>)}
             </select>
           </label>
         )}
