@@ -216,6 +216,7 @@ button:disabled { cursor: default; opacity: 0.6; }
 .empty { padding: var(--space-6); border-radius: var(--radius-card-sm); background: var(--empty-bg); text-align: center; color: var(--ink-2); }
 .band-alt .empty, .md-cards .empty { background: var(--empty-on-alt); }
 .grid { display: grid; gap: var(--space-4); min-width: 0; }
+.more-link { margin-top: var(--space-5); }
 
 /* ---- Cards: no borders; gray on white sections, white (or dark gray) on gray sections ---- */
 .card {
