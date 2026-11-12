@@ -147,6 +147,19 @@ npm run preview
 | `admins/{uid}` | No fields needed. Added in the console only. |
 | `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
 
+On a member's profile, **Call** opens the phone app using the saved number, **Email** opens the default mail app, and **Message** opens a private in-app conversation. The in-app conversation feature requires the database contract below and participant-only rules to be deployed by the database owner.
+
+### Chat database contract (required for the in-app chat UI)
+
+The UI expects the database owner to add:
+
+| Path | Fields |
+| --- | --- |
+| `conversations/{conversationId}` | `participantIds` (two sorted member UIDs), `createdAt`, `updatedAt`, `lastMessage`, `lastMessageId`, `lastSenderId` |
+| `conversations/{conversationId}/messages/{messageId}` | `senderId`, `text` (1–2000 characters), `createdAt` |
+
+`conversationId` is the two participant UIDs sorted lexically, URI-encoded (with `~` encoded as `%7E`), then joined with `~`. The database rules must restrict reads to active participants, validate participants and sender identity, make message documents immutable, and require each message creation and conversation-summary update to happen atomically. Until those collections and rules exist, the in-app chat UI will not be able to read or send messages.
+
 ## Known limitation
 
 Firestore rules can't delete child documents. The UI blocks deleting an issue that still has tasks. Comments on a deleted task stay in the database, but the app only ever loads comments for a task that exists, so they never show up.

@@ -1,19 +1,29 @@
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
-import { Avatar, Icons, LockNote, firstName } from '../components/ui.jsx';
+import { Avatar, ErrorNote, Icons, LockNote, firstName } from '../components/ui.jsx';
 import { bySoonestDue } from '../lib/dates.js';
-import { displayPhone, phoneHref } from '../lib/phone.js';
+import { displayPhone, phoneDigits, phoneHref } from '../lib/phone.js';
+import { openConversation } from '../lib/chat.js';
+import { useAction } from '../lib/errors.js';
 
 export function DetailRows({ member }) {
+  const email = typeof member.email === 'string' ? member.email.trim() : '';
+  const hasPhone = phoneDigits(member.phone).length === 10;
   return (
     <div className="detail-rows">
       <div><span>Name</span><span>{member.name}</span></div>
-      <div><span>Email</span><a href={`mailto:${member.email}`}>{member.email}</a></div>
-      <div><span>Phone</span><a href={phoneHref(member.phone)}>{displayPhone(member.phone)}</a></div>
+      <div>
+        <span>Email</span>
+        {email ? <a href={`mailto:${email}`}>{email}</a> : <span className="muted">Not provided</span>}
+      </div>
+      <div>
+        <span>Phone</span>
+        {hasPhone ? <a href={phoneHref(member.phone)}>{displayPhone(member.phone)}</a> : <span className="muted">{member.phone || 'Not provided'}</span>}
+      </div>
     </div>
   );
 }
@@ -22,6 +32,8 @@ export default function MemberProfile() {
   const { memberId } = useParams();
   const { user } = useAuth();
   const { memberById, issues, tasks } = useData();
+  const navigate = useNavigate();
+  const { busy, error, run } = useAction();
   const member = memberById.get(memberId);
 
   if (memberId === user.uid) return <Navigate to="/me" replace />;
@@ -35,8 +47,14 @@ export default function MemberProfile() {
   }
 
   const first = firstName(member.name);
+  const email = typeof member.email === 'string' ? member.email.trim() : '';
+  const hasPhone = phoneDigits(member.phone).length === 10;
   const theirIssues = issues.filter((i) => i.ownerId === member.id);
   const theirTasks = tasks.filter((t) => t.assigneeId === member.id).sort(bySoonestDue);
+  const startConversation = () => run(async () => {
+    const conversationId = await openConversation(user.uid, member.id);
+    navigate(`/messages/${conversationId}`);
+  });
 
   return (
     <>
@@ -51,7 +69,21 @@ export default function MemberProfile() {
         <LockNote>Only {first} can edit this profile.</LockNote>
       </section>
       <section className="band band-tight" aria-label={`${first}'s details`}>
-        <div className="band-inner narrow"><DetailRows member={member} /></div>
+        <div className="band-inner narrow">
+          <DetailRows member={member} />
+          <div className="contact-actions" role="group" aria-label={`Contact ${member.name}`}>
+            <button type="button" className="pill pill-sm" onClick={startConversation} disabled={busy}>
+              {busy ? 'Opening…' : 'Message'}
+            </button>
+            {hasPhone && (
+              <a className="pill pill-sm" href={phoneHref(member.phone)}>Call</a>
+            )}
+            {email && (
+              <a className="pill pill-sm" href={`mailto:${email}`}>Email</a>
+            )}
+          </div>
+          <ErrorNote>{error}</ErrorNote>
+        </div>
       </section>
       <section className="band band-alt" aria-labelledby="h-their-issues">
         <div className="band-inner stack-md">
