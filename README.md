@@ -44,6 +44,19 @@ npx firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
 
 Open **Firestore Database > Rules**, replace everything in the editor with the contents of [`firestore.rules`](firestore.rules), and click **Publish**.
 
+**After setup: let GitHub deploy rule changes**
+
+Once the repo is on GitHub (step 5), [`.github/workflows/deploy-firestore-rules.yml`](.github/workflows/deploy-firestore-rules.yml) runs the rules tests and deploys `firestore.rules` whenever a change to it lands on `main`. It uses the `projectId` from `src/firebase.config.js`. From then on, change rules only by editing `firestore.rules` and committing. Edits made in the console get overwritten by the next deploy.
+
+To give the workflow access:
+
+1. In Google Cloud Console, open **IAM & Admin > Service Accounts** for your Firebase project.
+2. Create a service account with the **Firebase Rules Admin** and **Service Usage Consumer** roles. If the deploy fails with a permissions error, try **Firebase Admin** instead.
+3. Create a JSON key for it and download it.
+4. In GitHub, open **Settings > Secrets and variables > Actions** and add a secret named `FIREBASE_SERVICE_ACCOUNT`. Paste the whole JSON file as its value, then delete the key file from your computer.
+
+You can also run the deploy by hand from **Actions > Deploy Firestore rules > Run workflow**.
+
 ### 4. Authorize your GitHub Pages domain
 
 Go to **Authentication > Settings > Authorized domains > Add domain** and add `<username>.github.io`, using your GitHub username.
