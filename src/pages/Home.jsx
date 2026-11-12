@@ -3,9 +3,9 @@ import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { TopBar } from '../components/Layout.jsx';
-import { IssueCard, OpenTaskCard } from '../components/cards.jsx';
+import { IssueCard, MyTaskCard, OpenTaskCard } from '../components/cards.jsx';
 import { HealthBadge, Icons, firstName } from '../components/ui.jsx';
-import { bySoonestDue } from '../lib/dates.js';
+import { bySoonestDue, isOverdue } from '../lib/dates.js';
 
 function timeOfDay(date) {
   const hour = date.getHours();
@@ -15,7 +15,7 @@ function timeOfDay(date) {
 }
 
 export default function Home() {
-  const { member } = useAuth();
+  const { user, member } = useAuth();
   const { issues, tasks } = useData();
   const now = new Date();
   const part = timeOfDay(now);
@@ -25,6 +25,9 @@ export default function Home() {
   const issueTitle = (id) => issues.find((i) => i.id === id)?.title;
   // Skips tasks left behind by a deleted issue, since nobody can open those.
   const open = tasks.filter((t) => t.status === 'todo' && !t.assigneeId && issueTitle(t.issueId)).sort(bySoonestDue);
+  // What you're holding and haven't finished. Done tasks stay on the Me page.
+  const mine = tasks.filter((t) => t.assigneeId === user.uid && t.status !== 'done' && issueTitle(t.issueId)).sort(bySoonestDue);
+  const overdue = mine.filter((t) => isOverdue(t)).length;
 
   const scrollToOpen = () => document.getElementById('h-open')?.scrollIntoView({ behavior: 'smooth' });
 
@@ -42,6 +45,23 @@ export default function Home() {
           <Link to="/issues" className="textlink">All issues<Icons.chevron /></Link>
         </div>
       </section>
+
+      {mine.length > 0 && (
+        <section aria-labelledby="h-mine" className="band band-tight">
+          <div className="band-inner">
+            <div className="section-head">
+              <h2 id="h-mine" className="headline">Your tasks.</h2>
+              <p className="sub">
+                {mine.length} on your plate{overdue > 0 && `, ${overdue} overdue`}. Soonest due first.
+              </p>
+            </div>
+            <div className="grid grid-issues">
+              {mine.map((task) => <MyTaskCard key={task.id} task={task} />)}
+            </div>
+            <p className="center-text more-link"><Link to="/me" className="textlink">Everything you're on, including finished tasks<Icons.chevron /></Link></p>
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="h-open" className="band band-alt">
         <div className="band-inner">
