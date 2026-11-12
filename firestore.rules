@@ -139,14 +139,44 @@ service cloud.firestore {
     // ---- tasks/{id} ----
     function validTask() {
       return incoming().keys().hasAll(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])
-        && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt', 'dueDate'])
+        && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt', 'dueDate', 'repeat', 'repeatOf'])
         && validDueDate()
+        && validRepeat()
+        && (!('repeatOf' in incoming()) || incoming().repeatOf is string)
         && incoming().issueId is string
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
         && incoming().status in ['todo', 'doing', 'done']
         && (incoming().assigneeId == null
             || (incoming().assigneeId is string && memberExists(incoming().assigneeId)));
+    }
+    // repeat is optional. A repeating task needs a due date to count the next one from.
+    // When it's marked done, the app creates the next one and clears repeat on the finished one.
+    function validRepeat() {
+      return !('repeat' in incoming())
+        || incoming().repeat == null
+        || (incoming().repeat in ['daily', 'weekly', 'biweekly', 'monthly']
+            && 'dueDate' in incoming() && incoming().dueDate is string);
+    }
+    function taskPath(id) {
+      return /databases/$(database)/documents/tasks/$(id);
+    }
+    // The next task in a repeating series. Whoever finishes a repeating task creates the next one,
+    // even without edit access to the issue, but only in the same batch that marks theirs done
+    // and turns its repeat off. That also means each task can only start one follow-up.
+    function isRepeatFollowUp() {
+      return 'repeatOf' in incoming()
+        && isFollowUpOf(get(taskPath(incoming().repeatOf)).data, getAfter(taskPath(incoming().repeatOf)).data);
+    }
+    function isFollowUpOf(before, after) {
+      return before.assigneeId == uid()
+        && 'repeat' in before && before.repeat != null
+        && after.status == 'done'
+        && after.repeat == null
+        && incoming().issueId == before.issueId
+        && incoming().repeat == before.repeat
+        && incoming().assigneeId == null
+        && incoming().status == 'todo';
     }
     // Claim: an unassigned task, taken by the signed-in user, with nothing else touched.
     function isClaim() {
@@ -165,7 +195,9 @@ service cloud.firestore {
       allow read: if active();
       allow create: if active() && validTask() && createdNow()
         && incoming().createdBy == uid()
-        && uid() in get(/databases/$(database)/documents/issues/$(incoming().issueId)).data.editorIds;
+        && (isRepeatFollowUp()
+            || (!('repeatOf' in incoming())
+                && uid() in get(/databases/$(database)/documents/issues/$(incoming().issueId)).data.editorIds));
       allow update: if active() && (
         isClaim()
         || isAdminRelease()

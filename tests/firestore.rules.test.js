@@ -478,3 +478,96 @@ test('non-admin cannot let someone back in', async () => {
 test('admin cannot create a profile for someone who was never banned', async () => {
   await assertFails(setDoc(doc(asUser('root'), 'members/carol'), { name: 'carol', email: 'carol@example.com', phone: '(555) 555-0100', createdAt: when }));
 });
+
+// ---- repeating tasks ----
+test('a task can repeat daily, weekly, every 2 weeks, or monthly when it has a due date', async () => {
+  const db = asUser('alice');
+  for (const repeat of ['daily', 'weekly', 'biweekly', 'monthly']) {
+    await assertSucceeds(setDoc(doc(db, `tasks/r-${repeat}`), task('alice', null, { dueDate: '2026-11-14', repeat })));
+  }
+  await assertSucceeds(setDoc(doc(db, 'tasks/r-none'), task('alice', null, { dueDate: '2026-11-14', repeat: null })));
+});
+test('repeat must be a known value and needs a due date', async () => {
+  const db = asUser('alice');
+  await assertFails(setDoc(doc(db, 'tasks/r1'), task('alice', null, { dueDate: '2026-11-14', repeat: 'yearly' })));
+  await assertFails(setDoc(doc(db, 'tasks/r2'), task('alice', null, { dueDate: '2026-11-14', repeat: 7 })));
+  await assertFails(setDoc(doc(db, 'tasks/r3'), task('alice', null, { repeat: 'weekly' })));
+  await assertFails(setDoc(doc(db, 'tasks/r4'), task('alice', null, { dueDate: null, repeat: 'weekly' })));
+});
+test('the holder can turn repeating on and off, but not drop the due date while it repeats', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { dueDate: '2026-11-14', repeat: 'weekly' }));
+  await assertFails(updateDoc(doc(db, 'tasks/assigned'), { dueDate: null }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/assigned'), { repeat: null }));
+});
+test('finishing a repeating task: mark it done and create the next one in one batch', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'tasks/weekly'), task('bob', 'alice', { createdAt: when, dueDate: '2026-11-14', repeat: 'weekly' }));
+  });
+  const db = asUser('alice');
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'tasks/weekly'), { status: 'done', repeat: null });
+  batch.set(doc(db, 'tasks/weekly-next'), task('alice', null, { dueDate: '2026-11-21', repeat: 'weekly', repeatOf: 'weekly' }));
+  await assertSucceeds(batch.commit());
+});
+
+// bob holds a weekly task on alice's issue, but has no edit access to that issue.
+async function seedBobsWeeklyTask() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'tasks/weekly'), task('alice', 'bob', { createdAt: when, dueDate: '2026-11-14', repeat: 'weekly' }));
+  });
+}
+const finishAndRepeat = (db, next = {}) => {
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'tasks/weekly'), { status: 'done', repeat: null });
+  batch.set(doc(db, 'tasks/weekly-next'), task('bob', null, { dueDate: '2026-11-21', repeat: 'weekly', repeatOf: 'weekly', ...next }));
+  return batch.commit();
+};
+
+test('a holder without edit access can still finish a repeating task and start the next one', async () => {
+  await seedBobsWeeklyTask();
+  await assertSucceeds(finishAndRepeat(asUser('bob')));
+});
+test('without edit access, a follow-up is refused unless the old task is finished in the same batch', async () => {
+  await seedBobsWeeklyTask();
+  const db = asUser('bob');
+  await assertFails(setDoc(doc(db, 'tasks/weekly-next'), task('bob', null, { dueDate: '2026-11-21', repeat: 'weekly', repeatOf: 'weekly' })));
+  // Finishing it but leaving repeat on would let it start a second follow-up later.
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'tasks/weekly'), { status: 'done' });
+  batch.set(doc(db, 'tasks/weekly-next'), task('bob', null, { dueDate: '2026-11-21', repeat: 'weekly', repeatOf: 'weekly' }));
+  await assertFails(batch.commit());
+});
+test('a follow-up must stay on the same issue and schedule, and start unclaimed', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'issues/issue2'), issue('alice', { createdAt: when }));
+  });
+  await seedBobsWeeklyTask();
+  const db = asUser('bob');
+  await assertFails(finishAndRepeat(db, { issueId: 'issue2' }));
+  await assertFails(finishAndRepeat(db, { repeat: 'daily' }));
+  await assertFails(finishAndRepeat(db, { assigneeId: 'bob' }));
+  await assertFails(finishAndRepeat(db, { status: 'doing' }));
+});
+test('a finished task cannot start a second follow-up', async () => {
+  await seedBobsWeeklyTask();
+  const db = asUser('bob');
+  await assertSucceeds(finishAndRepeat(db));
+  await assertFails(setDoc(doc(db, 'tasks/weekly-again'), task('bob', null, { dueDate: '2026-11-28', repeat: 'weekly', repeatOf: 'weekly' })));
+});
+test('someone who never held the task cannot create its follow-up', async () => {
+  await seedBobsWeeklyTask();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'members/carol'), member('carol', { createdAt: when }));
+  });
+  const db = asUser('carol');
+  await assertFails(setDoc(doc(db, 'tasks/weekly-next'), task('carol', null, { dueDate: '2026-11-21', repeat: 'weekly', repeatOf: 'weekly' })));
+});
+test('someone who does not hold a repeating task cannot finish it or change its repeat', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'tasks/weekly'), task('bob', 'alice', { createdAt: when, dueDate: '2026-11-14', repeat: 'weekly' }));
+  });
+  const db = asUser('bob');
+  await assertFails(updateDoc(doc(db, 'tasks/weekly'), { status: 'done', repeat: null }));
+  await assertFails(updateDoc(doc(db, 'tasks/weekly'), { repeat: 'daily' }));
+});

@@ -63,3 +63,38 @@ export function monthDays(key) {
   }
   return days;
 }
+
+// ---- Repeating tasks ----
+
+// The order here is the order the form shows them in.
+export const REPEAT_OPTIONS = {
+  daily: 'Every day',
+  weekly: 'Every week',
+  biweekly: 'Every 2 weeks',
+  monthly: 'Every month',
+};
+
+export const isRepeat = (value) => Object.hasOwn(REPEAT_OPTIONS, value);
+
+// One step forward. A monthly date keeps its day, or the month's last day when it's shorter:
+// Jan 31 → Feb 28 (or 29 in a leap year).
+export function addRepeat(iso, repeat) {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (repeat === 'monthly') {
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    return toISODate(new Date(y, m, Math.min(d, lastDay)));
+  }
+  const days = { daily: 1, weekly: 7, biweekly: 14 }[repeat];
+  if (!days) throw new Error(`Unknown repeat: ${repeat}`);
+  return toISODate(new Date(y, m - 1, d + days));
+}
+
+// The next due date counts from the old due date, so the schedule doesn't drift when someone
+// finishes early or late. If the task ran so late that the next date has already passed,
+// skip ahead to the first one that's today or later.
+export function nextDueDate(iso, repeat, now = new Date()) {
+  const today = todayISO(now);
+  let next = addRepeat(iso, repeat);
+  while (next < today) next = addRepeat(next, repeat);
+  return next;
+}

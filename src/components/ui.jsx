@@ -108,12 +108,16 @@ export function StatusBadge({ status }) {
 
 // The text says "Overdue", so the warning never depends on color alone.
 // Takes a task or an issue.
+const REPEAT_SHORT = { daily: 'daily', weekly: 'weekly', biweekly: 'every 2 weeks', monthly: 'monthly' };
+
+// Repeating tasks say so on the same badge, wherever a due date shows.
 export function DueBadge({ item }) {
   if (!item.dueDate) return null;
   const when = formatDue(item.dueDate);
+  const repeats = REPEAT_SHORT[item.repeat] ? ` · Repeats ${REPEAT_SHORT[item.repeat]}` : '';
   return isOverdue(item)
-    ? <span className="badge badge-due tone-risk">Overdue · {when}</span>
-    : <span className="badge badge-due tone-todo">Due {when}</span>;
+    ? <span className="badge badge-due tone-risk">Overdue · {when}{repeats}</span>
+    : <span className="badge badge-due tone-todo">Due {when}{repeats}</span>;
 }
 
 export function LockNote({ children }) {

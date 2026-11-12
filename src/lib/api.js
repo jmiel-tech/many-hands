@@ -9,6 +9,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { isRepeat, nextDueDate } from './dates.js';
 
 // Firestore queues writes while offline and their promises never settle, which would
 // leave buttons spinning. Fail straight away instead, so two people can't both "take" a task.
@@ -51,24 +52,78 @@ export async function deleteIssue(id) {
   await deleteDoc(doc(db, 'issues', id));
 }
 
-export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate }) {
+// The next task in a repeating series: same work, next due date, unclaimed.
+function nextInSeries(uid, task) {
+  return {
+    issueId: task.issueId,
+    title: task.title,
+    description: task.description,
+    status: 'todo',
+    assigneeId: null,
+    dueDate: nextDueDate(task.dueDate, task.repeat),
+    repeat: task.repeat,
+    createdBy: uid,
+    createdAt: serverTimestamp(),
+  };
+}
+
+const isFinishedRepeat = (task) => task.status === 'done' && isRepeat(task.repeat) && Boolean(task.dueDate);
+
+// Returns the new task's id, plus the next due date when it was created already done and repeating.
+export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate, repeat }) {
   requireOnline();
-  const ref = await addDoc(collection(db, 'tasks'), {
+  const values = {
     issueId,
     title,
     description,
     status,
     assigneeId,
     dueDate: dueDate || null,
+    repeat: (dueDate && repeat) || null,
     createdBy: uid,
     createdAt: serverTimestamp(),
-  });
-  return ref.id;
+  };
+  const ref = doc(collection(db, 'tasks'));
+  if (!isFinishedRepeat(values)) {
+    await setDoc(ref, values);
+    return { id: ref.id, nextDue: null };
+  }
+  // Created already done: save it as finished and start the series with the next one.
+  const next = nextInSeries(uid, values);
+  const batch = writeBatch(db);
+  batch.set(ref, { ...values, repeat: null });
+  batch.set(doc(collection(db, 'tasks')), next);
+  await batch.commit();
+  return { id: ref.id, nextDue: next.dueDate };
 }
 
 export async function updateTask(id, patch) {
   requireOnline();
   await updateDoc(doc(db, 'tasks', id), patch);
+}
+
+// Saves a change to a task the user holds. If that change finishes a repeating task, it also
+// creates the next one, in the same batch that turns repeat off on the finished one, which is
+// what the rules require. Returns the next one's due date, or null when nothing repeated.
+export async function saveTask(uid, task, patch) {
+  requireOnline();
+  const ref = doc(db, 'tasks', task.id);
+  const after = { ...task, ...patch };
+  if (!isFinishedRepeat(after)) {
+    await updateDoc(ref, patch);
+    return null;
+  }
+  // The rules only accept a follow-up from a task that was already repeating, so when this same
+  // save turns repeat on, save that part first.
+  if (!isRepeat(task.repeat)) {
+    await updateDoc(ref, { ...patch, status: task.status });
+  }
+  const next = { ...nextInSeries(uid, after), repeatOf: task.id };
+  const batch = writeBatch(db);
+  batch.update(ref, { ...patch, status: 'done', repeat: null });
+  batch.set(doc(collection(db, 'tasks')), next);
+  await batch.commit();
+  return next.dueDate;
 }
 
 export async function takeTask(id, uid) {

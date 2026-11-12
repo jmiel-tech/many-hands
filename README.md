@@ -142,10 +142,18 @@ npm run preview
 | --- | --- |
 | `members/{uid}` | `name`, `email`, `phone`, `createdAt` |
 | `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `editorIds` (uids with edit access, always includes the owner), `createdAt` |
-| `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `createdBy`, `createdAt` |
+| `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `repeat` (optional: `daily`, `weekly`, `biweekly`, `monthly` or `null`; needs a `dueDate`), `repeatOf` (on a task made by a repeat: the id of the task it follows), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
 | `admins/{uid}` | No fields needed. Added in the console only. |
 | `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
+
+## Repeating tasks
+
+A task with a due date can repeat every day, week, 2 weeks or month. When its holder marks it Done, the app creates the next one in the same batch: same issue, title and description, the next due date, unclaimed. The finished task's `repeat` is cleared, so the series always lives on the newest task, and finishing an old one again never makes a duplicate. To stop a series, edit the newest task and set Repeat to Never.
+
+The next due date counts from the old due date, not the day it was finished, so the schedule doesn't drift. If a task ran so late that the next date has passed, it skips ahead to the first date that's today or later. Monthly dates keep their day, or use the last day of a shorter month.
+
+Whoever holds a task can finish it even without edit access to its issue, so the rules let them create its follow-up too, but only in the batch that marks theirs done and clears its `repeat`.
 
 ## Known limitation
 

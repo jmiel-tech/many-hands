@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useData, canEditIssue } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
-import { createTask, updateTask } from '../lib/api.js';
+import { createTask, saveTask } from '../lib/api.js';
+import { REPEAT_OPTIONS, formatDue, nextDueDate } from '../lib/dates.js';
 import { Avatar, ErrorNote, FormHead, LockNote, Modal, Segmented, TASK_STATUS, firstName } from '../components/ui.jsx';
 
 export default function TaskForm() {
@@ -19,7 +20,8 @@ export default function TaskForm() {
   const [status, setStatus] = useState(task?.status || 'todo');
   const [assigneeId, setAssigneeId] = useState(task?.assigneeId ?? '');
   const [dueDate, setDueDate] = useState(task?.dueDate || '');
-  const { busy, error, run } = useAction();
+  const [repeat, setRepeat] = useState(task?.repeat || '');
+  const { busy, error, setError, run } = useAction();
 
   const close = () => navigate(isEdit ? `/issues/${routeIssueId}/tasks/${taskId}` : `/issues/${routeIssueId}`);
 
@@ -53,22 +55,28 @@ export default function TaskForm() {
 
   const submit = (e) => {
     e.preventDefault();
+    if (repeat && !dueDate) {
+      setError('A repeating task needs a due date, so the app knows when the next one is due.');
+      return;
+    }
     const values = {
       title: title.trim(),
       description: description.trim(),
       assigneeId: assigneeId || null,
       dueDate: dueDate || null,
+      repeat: (dueDate && repeat) || null,
       // A task nobody holds can't be underway.
       status: unassigned ? 'todo' : status,
     };
     run(async () => {
+      // When a save finishes a repeating task, the panel says when the next one is due.
       if (isEdit) {
-        await updateTask(taskId, values);
+        const nextDue = await saveTask(user.uid, task, values);
         // Reassigning hands over control, so go back to the board's read-only view.
-        close();
+        navigate(`/issues/${routeIssueId}/tasks/${taskId}`, { state: { nextDue } });
       } else {
-        const id = await createTask(user.uid, { ...values, issueId });
-        navigate(`/issues/${issueId}/tasks/${id}`);
+        const { id, nextDue } = await createTask(user.uid, { ...values, issueId });
+        navigate(`/issues/${issueId}/tasks/${id}`, { state: { nextDue } });
       }
     });
   };
@@ -97,7 +105,20 @@ export default function TaskForm() {
           <input className="field" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           <span className="hint">
             Optional.{' '}
-            {dueDate && <button type="button" className="textlink small" onClick={() => setDueDate('')}>Clear date</button>}
+            {dueDate && <button type="button" className="textlink small" onClick={() => { setDueDate(''); setRepeat(''); }}>Clear date</button>}
+          </span>
+        </label>
+        <label className="lbl">Repeat
+          <select className="field select" value={repeat} onChange={(e) => setRepeat(e.target.value)}>
+            <option value="">Never</option>
+            {Object.entries(REPEAT_OPTIONS).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+          </select>
+          <span className="hint">
+            {!repeat
+              ? 'Pick how often this comes around, and a new copy is made each time it\'s marked done.'
+              : !dueDate
+                ? 'Pick a due date above. The next one is counted from it.'
+                : `When it's marked done, a new unclaimed copy is made, due ${formatDue(nextDueDate(dueDate, repeat))}.`}
           </span>
         </label>
         {!unassigned && (

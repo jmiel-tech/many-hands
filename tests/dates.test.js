@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bySoonestDue, formatDue, isOverdue, monthDays, shiftMonth, todayISO } from '../src/lib/dates.js';
+import { addRepeat, bySoonestDue, formatDue, isOverdue, isRepeat, monthDays, nextDueDate, shiftMonth, todayISO } from '../src/lib/dates.js';
 
 const now = new Date(2026, 10, 11, 23, 30); // Nov 11 2026, late evening local time
 
@@ -72,4 +72,46 @@ test('monthDays covers whole Sunday-to-Saturday weeks', () => {
   assert.equal(march[0], '2026-03-01');
   assert.equal(new Set(march).size, march.length);
   assert.ok(march.includes('2026-03-08') && march.includes('2026-03-09'));
+});
+
+// ---- Repeating tasks ----
+
+test('addRepeat steps a day, a week, or two weeks, across month and year ends', () => {
+  assert.equal(addRepeat('2026-11-11', 'daily'), '2026-11-12');
+  assert.equal(addRepeat('2026-11-28', 'weekly'), '2026-12-05');
+  assert.equal(addRepeat('2026-12-25', 'biweekly'), '2027-01-08');
+  assert.equal(addRepeat('2026-12-31', 'daily'), '2027-01-01');
+});
+
+test('addRepeat monthly keeps the day, or uses the last day of a shorter month', () => {
+  assert.equal(addRepeat('2026-11-15', 'monthly'), '2026-12-15');
+  assert.equal(addRepeat('2026-12-15', 'monthly'), '2027-01-15');
+  assert.equal(addRepeat('2027-01-31', 'monthly'), '2027-02-28');
+  assert.equal(addRepeat('2028-01-31', 'monthly'), '2028-02-29');
+  assert.equal(addRepeat('2026-03-31', 'monthly'), '2026-04-30');
+});
+
+test('addRepeat rejects an unknown repeat', () => {
+  assert.throws(() => addRepeat('2026-11-11', 'yearly'));
+});
+
+test('nextDueDate counts from the due date, not the day it was finished', () => {
+  // Due Saturday the 14th, finished early on the 11th: next is the following Saturday.
+  assert.equal(nextDueDate('2026-11-14', 'weekly', now), '2026-11-21');
+  // Due today, finished today.
+  assert.equal(nextDueDate('2026-11-11', 'weekly', now), '2026-11-18');
+});
+
+test('nextDueDate skips past dates when a task was finished very late', () => {
+  // Due Oct 14, finished Nov 11: Oct 21, 28 and Nov 4 have passed, so Nov 11 (today) is next.
+  assert.equal(nextDueDate('2026-10-14', 'weekly', now), '2026-11-11');
+  assert.equal(nextDueDate('2026-08-20', 'monthly', now), '2026-11-20');
+  assert.equal(nextDueDate('2026-11-01', 'daily', now), '2026-11-11');
+});
+
+test('isRepeat accepts only the listed options', () => {
+  assert.ok(isRepeat('weekly'));
+  assert.ok(!isRepeat('yearly'));
+  assert.ok(!isRepeat(null));
+  assert.ok(!isRepeat('toString'));
 });

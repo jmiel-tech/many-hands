@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useComments, useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
-import { addComment, deleteComment, deleteTask, updateComment, updateTask } from '../lib/api.js';
+import { addComment, deleteComment, deleteTask, saveTask, updateComment, updateTask } from '../lib/api.js';
+import { formatDue } from '../lib/dates.js';
 import { TakeButton } from '../components/cards.jsx';
 import { Avatar, ConfirmRow, DueBadge, ErrorNote, Icons, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
 
@@ -109,6 +110,13 @@ export default function TaskPanel() {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const { busy, error, run } = useAction();
+  // Set when finishing a repeating task made the next one, here or in the edit form.
+  const { state } = useLocation();
+  const [nextDue, setNextDue] = useState(state?.nextDue || null);
+  // The edit form opens inside this panel, so the panel stays mounted when the form saves.
+  useEffect(() => {
+    if (state?.nextDue) setNextDue(state.nextDue);
+  }, [state?.nextDue]);
 
   const close = () => navigate(`/issues/${issueId}`);
   const task = tasks.find((t) => t.id === taskId);
@@ -128,7 +136,9 @@ export default function TaskPanel() {
   const mine = task.assigneeId === user.uid;
   const assigneeName = task.assigneeId ? nameOf(task.assigneeId) : null;
 
-  const setStatus = (status) => run(() => updateTask(task.id, { status }));
+  const setStatus = (status) => run(async () => {
+    setNextDue(await saveTask(user.uid, task, { status }));
+  });
   const giveBack = () => run(() => updateTask(task.id, { assigneeId: null, status: 'todo' }));
   const remove = () => run(async () => {
     await deleteTask(task.id);
@@ -169,6 +179,11 @@ export default function TaskPanel() {
             </span>
           </div>
 
+          {nextDue && (
+            <p role="status" className="saved-note">
+              Nice work! The next one is on the board, due {formatDue(nextDue)}, for anyone to take.
+            </p>
+          )}
           {mine && (
             <div className="owner-box">
               <Segmented label="Update status" name="task-status" options={TASK_STATUS} value={task.status} onChange={setStatus} disabled={busy} />
