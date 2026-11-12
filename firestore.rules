@@ -114,6 +114,7 @@ service cloud.firestore {
       return incoming().keys().hasAll(['title', 'description', 'status', 'ownerId', 'createdAt'])
         && incoming().keys().hasOnly(['title', 'description', 'status', 'ownerId', 'createdAt', 'dueDate', 'editorIds', 'editableByAll'])
         && validDueDate()
+        && (!('editableByAll' in incoming()) || incoming().editableByAll is bool)
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
         && incoming().status in ['open', 'in_progress', 'resolved'];
