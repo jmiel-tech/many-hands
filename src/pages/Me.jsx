@@ -58,7 +58,7 @@ function DeleteAccount({ unfinishedTaskIds }) {
       </label>
       <ErrorNote>{error}</ErrorNote>
       <div className="confirm-actions">
-        <button type="submit" className="pill pill-danger pill-sm" disabled={busy || !password}>{busy ? 'Deleting…' : 'Yes, delete my account'}</button>
+        <button type="submit" className="pill pill-danger pill-sm" disabled={busy || !password}>{busy ? 'Deleting…' : 'Delete account'}</button>
         <button type="button" className="pill pill-plain pill-sm" onClick={cancel} disabled={busy}>Cancel</button>
       </div>
     </form>
