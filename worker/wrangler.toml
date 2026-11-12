@@ -12,8 +12,8 @@ ALLOWED_ORIGINS = "https://jmiel-tech.github.io,http://localhost:5173"
 # Sent to OpenRouter as HTTP-Referer.
 SITE_URL = "https://jmiel-tech.github.io/many-hands/"
 
-# Per-user rate limit counters. Create the namespace once and paste its id here:
-#   npx wrangler kv namespace create RATE_LIMIT
+# Per-user rate limit counters (created with: npx wrangler kv namespace create RATE_LIMIT).
+# The id only names the store in your Cloudflare account; it isn't a secret.
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "eb54ec539397499d97dcb0f813e01118"
