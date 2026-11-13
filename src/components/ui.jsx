@@ -169,14 +169,21 @@ export function Segmented({ label, name, options, value, onChange, disabled }) {
   );
 }
 
-// Asks once more before anything is deleted.
-export function ConfirmRow({ question, onConfirm, onCancel, busy, confirmLabel = 'Delete', cancelLabel = 'Keep it' }) {
+// Asks once more before anything is deleted or thrown away.
+// autoFocusCancel moves focus to the safe choice when the question appears, so keyboard
+// and screen reader users land on it and an accidental Enter doesn't destroy anything.
+export function ConfirmRow({ question, onConfirm, onCancel, busy, confirmLabel = 'Delete', cancelLabel = 'Keep it', autoFocusCancel = false }) {
+  const cancelRef = useRef(null);
+  useEffect(() => {
+    if (autoFocusCancel) cancelRef.current?.focus();
+  }, [autoFocusCancel]);
+
   return (
     <div role="alertdialog" aria-label={question} className="confirm">
       <span className="confirm-q">{question}</span>
       <div className="confirm-actions">
         <button type="button" className="pill pill-danger pill-sm" onClick={onConfirm} disabled={busy}>{confirmLabel}</button>
-        <button type="button" className="pill pill-plain pill-sm" onClick={onCancel} disabled={busy}>{cancelLabel}</button>
+        <button ref={cancelRef} type="button" className="pill pill-plain pill-sm" onClick={onCancel} disabled={busy}>{cancelLabel}</button>
       </div>
     </div>
   );
@@ -186,12 +193,17 @@ export function ConfirmRow({ question, onConfirm, onCancel, busy, confirmLabel =
 // full-screen page under 900px, and a centered card or a side panel at 900px and up.
 export function Modal({ title, variant = 'form', closeLabel = 'Cancel', onClose, children }) {
   const ref = useRef(null);
+  const unmounting = useRef(false);
   const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
+    unmounting.current = false;
     if (!dialog.open) dialog.showModal();
-    return () => dialog.close();
+    return () => {
+      unmounting.current = true;
+      dialog.close();
+    };
   }, []);
 
   return (
@@ -202,6 +214,15 @@ export function Modal({ title, variant = 'form', closeLabel = 'Cancel', onClose,
       onCancel={(e) => {
         e.preventDefault();
         if (e.target === ref.current) onClose();
+      }}
+      onClose={(e) => {
+        // Chrome ignores preventDefault on a second Esc with no click or keypress in between,
+        // and closes the dialog itself. Reopen it and let onClose decide, so a form's
+        // "Discard changes?" check can't be skipped by pressing Esc twice.
+        const dialog = ref.current;
+        if (unmounting.current || e.target !== dialog || dialog.open) return;
+        dialog.showModal();
+        onClose();
       }}
       onClick={(e) => {
         if (e.target === ref.current) onClose();

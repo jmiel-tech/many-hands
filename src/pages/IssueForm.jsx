@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createIssue, updateIssue } from '../lib/api.js';
-import { Avatar, ErrorNote, FormHead, ISSUE_STATUS, Modal, Segmented, firstName } from '../components/ui.jsx';
+import { hasUnsavedChanges } from '../lib/forms.js';
+import { Avatar, ConfirmRow, ErrorNote, FormHead, ISSUE_STATUS, Modal, Segmented, firstName } from '../components/ui.jsx';
 
 export default function IssueForm() {
   const { issueId } = useParams();
@@ -20,7 +21,14 @@ export default function IssueForm() {
   const [dueDate, setDueDate] = useState(issue?.dueDate || '');
   const { busy, error, run } = useAction();
 
+  // What the form opened with, kept so closing can tell whether anything was changed.
+  const initial = useRef({ title, description, status, dueDate }).current;
+  const [discarding, setDiscarding] = useState(false);
+  const dirty = hasUnsavedChanges(initial, { title, description, status, dueDate });
+
   const close = () => navigate(isEdit ? `/issues/${issueId}` : '/issues');
+  // Cancel, Esc and a backdrop click all come through here. A successful save calls close() directly.
+  const requestClose = () => (dirty ? setDiscarding(true) : close());
 
   if (isEdit && !issue) {
     return (
@@ -45,13 +53,25 @@ export default function IssueForm() {
   };
 
   return (
-    <Modal title={isEdit ? 'Edit issue' : 'New issue'} onClose={close}>
+    <Modal title={isEdit ? 'Edit issue' : 'New issue'} onClose={requestClose}>
       <FormHead
         title={isEdit ? 'Edit issue.' : 'New issue.'}
         subtitle={!isEdit ? 'Start something the group can pitch in on.'
           : isOwner ? "You started this one, so it's yours to change."
           : `${firstName(nameOf(issue.ownerId))} started this one. Anyone can edit it.`}
       />
+      {discarding && (
+        <div className="form">
+          <ConfirmRow
+            question="Discard changes?"
+            confirmLabel="Discard"
+            cancelLabel="Keep editing"
+            autoFocusCancel
+            onConfirm={close}
+            onCancel={() => setDiscarding(false)}
+          />
+        </div>
+      )}
       <form className="form" aria-label={isEdit ? 'Edit issue' : 'New issue'} onSubmit={submit}>
         <label className="lbl">Title
           <input className="field" type="text" required maxLength={120} placeholder="e.g. Spring Coat Drive" value={title} onChange={(e) => setTitle(e.target.value)} />
