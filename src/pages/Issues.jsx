@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Outlet, useMatch } from 'react-router-dom';
 import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useData } from '../lib/data.jsx';
-import { ISSUE_VIEWS, filterIssues } from '../lib/filter.js';
+import { ISSUE_SORTS, ISSUE_VIEWS, filterIssues, sortIssues } from '../lib/filter.js';
 import { TopBar } from '../components/Layout.jsx';
 import { IssueCard } from '../components/cards.jsx';
 import { Segmented } from '../components/ui.jsx';
@@ -17,7 +17,8 @@ export default function IssuesPage() {
   // Resolved issues are hidden by default so the list shows what still needs work.
   const [view, setView] = useState('active');
   const [search, setSearch] = useState('');
-  const shown = filterIssues(issues, { view, search });
+  const [sort, setSort] = useState('newest');
+  const shown = sortIssues(filterIssues(issues, { view, search }), sort);
   const filtering = view !== 'all' || search.trim();
 
   const emptyText = () => {
@@ -51,6 +52,12 @@ export default function IssuesPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
             <Segmented label="Show" name="issue-view" options={ISSUE_VIEWS} value={view} onChange={setView} />
+            <div className="seg-wrap">
+              <label className="field-label" htmlFor="issue-sort">Sort by</label>
+              <select id="issue-sort" className="field select" value={sort} onChange={(e) => setSort(e.target.value)}>
+                {Object.entries(ISSUE_SORTS).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+              </select>
+            </div>
             <p className="muted-sm" aria-live="polite">
               {filtering ? `Showing ${shown.length} of ${issues.length}` : `${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`}
             </p>
