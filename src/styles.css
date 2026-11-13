@@ -272,6 +272,8 @@ a.card:focus-visible::before { opacity: 1; }
 .md-detail { min-width: 0; }
 .list-tools { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--gutter) var(--space-6); }
 .list-tools .field { width: 100%; }
+/* Members search sits inside a band, which already has the side gutter. Two classes so the 900px rule below can't remove the bottom space. */
+.list-tools.member-tools { max-width: 560px; padding: 0 0 var(--space-6); }
 .md-empty { display: none; }
 .md-has-detail .md-list { display: none; }
 
