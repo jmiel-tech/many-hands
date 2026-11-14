@@ -62,13 +62,20 @@ export default function TaskForm() {
     };
     run(async () => {
       if (isEdit) {
-        await updateTask(taskId, values);
-        // Reassigning hands over control, so go back to the board's read-only view.
-        close();
-      } else {
-        const id = await createTask(user.uid, { ...values, issueId });
-        navigate(`/issues/${issueId}/tasks/${id}`);
-      }
+  await updateTask(taskId, values);
+
+  navigate(`/issues/${routeIssueId}/tasks/${taskId}`, {
+    state: { successMessage: 'Task updated successfully.' },
+    replace: true,
+  });
+} else {
+  const id = await createTask(user.uid, { ...values, issueId });
+
+  navigate(`/issues/${issueId}/tasks/${id}`, {
+    state: { successMessage: 'Task created successfully.' },
+    replace: true,
+  });
+}
     });
   };
 
