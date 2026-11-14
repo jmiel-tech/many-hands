@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterIssues } from '../src/lib/filter.js';
+import { filterIssues, filterMembers } from '../src/lib/filter.js';
 
 const issues = [
   { id: 1, title: 'Fix the park benches', description: 'Two are broken', status: 'open' },
@@ -29,4 +29,49 @@ test('blank search ignores whitespace', () => {
 });
 test('missing description does not crash', () => {
   assert.deepEqual(ids(filterIssues([{ id: 4, title: 'X', status: 'open' }], { search: 'x' })), [4]);
+});
+
+// ---- Member search ----
+const members = [
+  { id: 'a', name: 'Ana Lopez', email: 'ana@example.com', phone: '(989) 555-1234' },
+  { id: 'b', name: 'Ben Carter', email: 'bcarter@svsu.edu', phone: '(517) 555-9876' },
+  { id: 'c', name: 'Chris Ana', email: 'chris@example.org', phone: '(313) 222-0000' },
+];
+const memberIds = (list) => list.map((m) => m.id);
+
+test('member search: blank search returns everyone', () => {
+  assert.deepEqual(memberIds(filterMembers(members, '')), ['a', 'b', 'c']);
+  assert.deepEqual(memberIds(filterMembers(members, '   ')), ['a', 'b', 'c']);
+  assert.deepEqual(memberIds(filterMembers(members)), ['a', 'b', 'c']);
+});
+test('member search: matches names case-insensitively', () => {
+  assert.deepEqual(memberIds(filterMembers(members, 'BEN')), ['b']);
+  assert.deepEqual(memberIds(filterMembers(members, 'ana')), ['a', 'c']);
+});
+test('member search: matches emails', () => {
+  assert.deepEqual(memberIds(filterMembers(members, 'svsu.edu')), ['b']);
+  assert.deepEqual(memberIds(filterMembers(members, 'Example.COM')), ['a']);
+});
+test('member search: matches phone numbers as stored', () => {
+  assert.deepEqual(memberIds(filterMembers(members, '(989) 555-1234')), ['a']);
+});
+test('member search: matches phone numbers by digits, ignoring punctuation', () => {
+  assert.deepEqual(memberIds(filterMembers(members, '9895551234')), ['a']);
+  assert.deepEqual(memberIds(filterMembers(members, '555-98')), ['b']);
+  assert.deepEqual(memberIds(filterMembers(members, '555')), ['a', 'b']);
+});
+test('member search: every word must match', () => {
+  assert.deepEqual(memberIds(filterMembers(members, 'ana example.org')), ['c']);
+  assert.deepEqual(memberIds(filterMembers(members, 'ana 989')), ['a']);
+});
+test('member search: no match returns an empty list', () => {
+  assert.deepEqual(memberIds(filterMembers(members, 'zelda')), []);
+  assert.deepEqual(memberIds(filterMembers(members, '000-1111')), []);
+});
+test('member search: punctuation-only words do not match everyone by digits', () => {
+  assert.deepEqual(memberIds(filterMembers(members, '()')), []);
+});
+test('member search: missing fields do not crash', () => {
+  assert.deepEqual(memberIds(filterMembers([{ id: 'x', name: 'Solo' }], 'solo')), ['x']);
+  assert.deepEqual(memberIds(filterMembers([{ id: 'y' }], '555')), []);
 });

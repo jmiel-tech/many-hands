@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createTask, updateTask } from '../lib/api.js';
-import { Avatar, ErrorNote, FormHead, LockNote, Modal, Segmented, TASK_STATUS, firstName } from '../components/ui.jsx';
+import { hasUnsavedChanges } from '../lib/forms.js';
+import { Avatar, ConfirmRow, ErrorNote, FormHead, LockNote, Modal, Segmented, TASK_STATUS, firstName } from '../components/ui.jsx';
 
 export default function TaskForm() {
   const { issueId: routeIssueId, taskId } = useParams();
@@ -21,7 +22,15 @@ export default function TaskForm() {
   const [dueDate, setDueDate] = useState(task?.dueDate || '');
   const { busy, error, run } = useAction();
 
+  // What the form opened with, kept so closing can tell whether anything was changed.
+  const current = { issueId, title, description, status, assigneeId, dueDate };
+  const initial = useRef(current).current;
+  const [discarding, setDiscarding] = useState(false);
+  const dirty = hasUnsavedChanges(initial, current);
+
   const close = () => navigate(isEdit ? `/issues/${routeIssueId}/tasks/${taskId}` : `/issues/${routeIssueId}`);
+  // Cancel, Esc and a backdrop click all come through here. A successful save calls close() or navigate() directly.
+  const requestClose = () => (dirty ? setDiscarding(true) : close());
 
   if (isEdit && task?.assigneeId !== user.uid) {
     return (
@@ -64,11 +73,23 @@ export default function TaskForm() {
   };
 
   return (
-    <Modal title={isEdit ? 'Edit task' : 'New task'} onClose={close}>
+    <Modal title={isEdit ? 'Edit task' : 'New task'} onClose={requestClose}>
       <FormHead
         title={isEdit ? 'Edit task.' : 'New task.'}
         subtitle={isEdit ? "It's assigned to you, so it's yours to change." : 'Add something the group needs done.'}
       />
+      {discarding && (
+        <div className="form">
+          <ConfirmRow
+            question="Discard changes?"
+            confirmLabel="Discard"
+            cancelLabel="Keep editing"
+            autoFocusCancel
+            onConfirm={close}
+            onCancel={() => setDiscarding(false)}
+          />
+        </div>
+      )}
       <form className="form" aria-label={isEdit ? 'Edit task' : 'New task'} onSubmit={submit}>
         {!isEdit && (
           <label className="lbl">Issue
