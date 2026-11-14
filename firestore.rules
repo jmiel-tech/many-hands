@@ -187,5 +187,116 @@ service cloud.firestore {
         && unchanged('taskId') && unchanged('authorId') && unchanged('createdAt');
       allow delete: if active() && existing().authorId == uid();
     }
+
+    // ---- conversations/{id} ----
+    function validParticipants(ids) {
+      return ids is list
+        && ids.size() == 2
+        && ids[0] is string
+        && ids[1] is string
+        && ids[0] != ids[1]
+        && ids[0] < ids[1]
+        && uid() in ids
+        && memberExists(ids[0])
+        && memberExists(ids[1])
+        && !bannedId(ids[0])
+        && !bannedId(ids[1]);
+    }
+
+    function isParticipant() {
+      return active()
+        && uid() in resource.data.participantIds;
+    }
+
+    function validConversationCreate() {
+      return incoming().keys().hasAll([
+          'participantIds', 'createdAt', 'updatedAt',
+          'lastMessage', 'lastMessageId', 'lastSenderId'
+        ])
+        && incoming().keys().hasOnly([
+          'participantIds', 'createdAt', 'updatedAt',
+          'lastMessage', 'lastMessageId', 'lastSenderId'
+        ])
+        && validParticipants(incoming().participantIds)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().lastMessage == ''
+        && incoming().lastMessageId == null
+        && incoming().lastSenderId == null;
+    }
+
+    match /conversations/{conversationId} {
+      // The client transaction must read a missing document before creating it.
+      // Missing docs contain no private data; existing docs stay participant-only.
+      allow get: if (active()
+          && !exists(/databases/$(database)/documents/conversations/$(conversationId)))
+        || isParticipant();
+      allow list: if isParticipant();
+
+      allow create: if active()
+        && validConversationCreate();
+
+      // The conversation metadata is updated when
+      // a participant sends a new message.
+      allow update: if isParticipant()
+        && incoming().diff(existing()).affectedKeys()
+          .hasOnly([
+            'updatedAt', 'lastMessage',
+            'lastMessageId', 'lastSenderId'
+          ])
+        && incoming().updatedAt == request.time
+        && incoming().lastSenderId == uid()
+        && incoming().lastMessage is string
+        && isText(incoming().lastMessage, 1, 2000)
+        && incoming().lastMessageId is string
+        && incoming().lastMessageId.size() > 0
+        && getAfter(
+          /databases/$(database)/documents/conversations/$(conversationId)/messages/$(incoming().lastMessageId)
+        ).data.senderId == uid()
+        && getAfter(
+          /databases/$(database)/documents/conversations/$(conversationId)/messages/$(incoming().lastMessageId)
+        ).data.text == incoming().lastMessage
+        && getAfter(
+          /databases/$(database)/documents/conversations/$(conversationId)/messages/$(incoming().lastMessageId)
+        ).data.createdAt == request.time
+        && !exists(
+          /databases/$(database)/documents/conversations/$(conversationId)/messages/$(incoming().lastMessageId)
+        );
+
+      allow delete: if false;
+
+      // ---- conversations/{id}/messages/{id} ----
+      match /messages/{messageId} {
+        function parentConversation() {
+          return get(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data;
+        }
+
+        function canAccessConversation() {
+          return active()
+            && uid() in parentConversation().participantIds;
+        }
+
+        allow read: if canAccessConversation();
+
+        allow create: if canAccessConversation()
+          && hasExactly(['senderId', 'text', 'createdAt'])
+          && incoming().senderId == uid()
+          && isText(incoming().text, 1, 2000)
+          && createdNow()
+          && getAfter(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.lastMessageId == messageId
+          && getAfter(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.lastMessage == incoming().text
+          && getAfter(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.lastSenderId == uid();
+
+        allow update, delete: if false;
+      }
+    }
   }
 }
