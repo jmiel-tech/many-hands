@@ -638,3 +638,106 @@ textarea.field { padding: var(--space-3) var(--space-4); line-height: 1.4; resiz
   .cal-dots { display: none; }
   .agenda { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 }
+
+/* Notifications */
+.notifications-container {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  pointer-events: none;
+  max-width: calc(100vw - var(--space-8));
+}
+
+.notification {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  pointer-events: all;
+  animation: slideIn 0.3s ease-out;
+  max-width: 400px;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-content span {
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.notification-success {
+  border-color: var(--success, #10b981);
+  background: var(--surface);
+}
+
+.notification-success .notification-content svg {
+  color: var(--success, #10b981);
+  flex-shrink: 0;
+}
+
+.notification-error {
+  border-color: var(--danger, #ef4444);
+  background: var(--surface);
+}
+
+.notification-error .notification-content svg {
+  color: var(--danger, #ef4444);
+  flex-shrink: 0;
+}
+
+.notification-info {
+  border-color: var(--link);
+  background: var(--surface);
+}
+
+.notification-info .notification-content svg {
+  color: var(--link);
+  flex-shrink: 0;
+}
+
+.notification-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-close:hover {
+  color: var(--ink);
+}
+
+.notification-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(400px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

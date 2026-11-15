@@ -3,6 +3,7 @@ import { isConfigured } from './firebase.js';
 import { AuthProvider, useAuth } from './lib/auth.jsx';
 import { DataProvider } from './lib/data.jsx';
 import { ThemeProvider } from './lib/theme.jsx';
+import { NotificationProvider, useNotificationTriggers } from './lib/notifications.jsx';
 import Layout from './components/Layout.jsx';
 import { Loading, Logo } from './components/ui.jsx';
 import AuthPage, { FinishProfile } from './pages/Auth.jsx';
@@ -31,6 +32,7 @@ function Gate() {
   if (!member) return <FinishProfile />;
   return (
     <DataProvider>
+      <NotificationTriggers />
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -60,6 +62,11 @@ function Gate() {
       </HashRouter>
     </DataProvider>
   );
+}
+
+function NotificationTriggers() {
+  useNotificationTriggers();
+  return null;
 }
 
 function Removed() {
@@ -95,11 +102,13 @@ function SetupNeeded() {
 export default function App() {
   return (
     <ThemeProvider>
-      {isConfigured ? (
-        <AuthProvider>
-          <Gate />
-        </AuthProvider>
-      ) : <SetupNeeded />}
+      <NotificationProvider>
+        {isConfigured ? (
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        ) : <SetupNeeded />}
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

@@ -40,6 +40,10 @@ export const Icons = {
   moon: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>),
   sun: (p) => (<svg width="24" height="24" strokeWidth="1.8" {...svgProps} {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>),
   offline: (p) => (<svg width="16" height="16" strokeWidth="2" {...svgProps} {...p}><path d="M3 3l18 18" /><path d="M8.5 16.5a5 5 0 0 1 7 0" /><path d="M5 12.5a10 10 0 0 1 5-2.7" /><path d="M19 12.5a10 10 0 0 0-3-2" /><circle cx="12" cy="20" r="0.5" /></svg>),
+  checkmark: (p) => (<svg width="20" height="20" strokeWidth="2.2" {...svgProps} {...p}><path d="M3 10l5 5 10-10" /></svg>),
+  error: (p) => (<svg width="20" height="20" strokeWidth="2.2" {...svgProps} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16v.01" /></svg>),
+  info: (p) => (<svg width="20" height="20" strokeWidth="2.2" {...svgProps} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16v.01" /></svg>),
+  close: (p) => (<svg width="16" height="16" strokeWidth="2.4" {...svgProps} {...p}><path d="M3 3l18 18M21 3l-18 18" /></svg>),
 };
 
 export function Logo({ size = 26 }) {

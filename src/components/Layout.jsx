@@ -5,6 +5,7 @@ import { useData, useOnline } from '../lib/data.jsx';
 import { useTheme } from '../lib/theme.jsx';
 import AssistantMount from '../assistant/index.jsx';
 import { Avatar, Icons, Loading, Logo } from './ui.jsx';
+import Notifications from './Notifications.jsx';
 
 const LINKS = [
   { to: '/', label: 'Home', icon: Icons.home, end: true },
@@ -67,6 +68,7 @@ export default function Layout() {
         )}
         {loading ? <Loading /> : <Outlet />}
       </main>
+      <Notifications />
       {!loading && <AssistantMount />}
     </div>
   );
