@@ -12,6 +12,7 @@ const LINKS = [
   { to: '/calendar', label: 'Calendar', icon: Icons.calendar },
   { to: '/members', label: 'Members', icon: Icons.members },
   { to: '/messages', label: 'Messages', icon: Icons.messages },
+  { to: '/chat', label: 'Chat', icon: Icons.chat },
   { to: '/me', label: 'Me', icon: Icons.me },
 ];
 const ADMIN_LINK = { to: '/admin', label: 'Admin', icon: Icons.admin };

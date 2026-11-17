@@ -310,5 +310,58 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // ---- issueComments/{id} ----
+    // Comments on an issue as a whole. Same shape and rules as task comments, keyed by issueId.
+    // Admins can also delete them, to keep shared discussion civil.
+    function validIssueComment() {
+      return hasExactly(['issueId', 'authorId', 'text', 'createdAt'])
+        && incoming().issueId is string
+        && isText(incoming().text, 1, 2000);
+    }
+
+    match /issueComments/{commentId} {
+      allow read: if active();
+      allow create: if active() && validIssueComment() && createdNow()
+        && incoming().authorId == uid()
+        && exists(/databases/$(database)/documents/issues/$(incoming().issueId));
+      allow update: if active() && existing().authorId == uid() && validIssueComment()
+        && unchanged('issueId') && unchanged('authorId') && unchanged('createdAt');
+      allow delete: if active() && (existing().authorId == uid() || isAdmin());
+    }
+
+    // ---- chatRooms/{id} ----
+    // Public chat rooms every member can read and post in. The "general" room is built in:
+    // it needs no document, so nobody can create, rename or delete it.
+    match /chatRooms/{roomId} {
+      allow read: if active();
+      allow create: if active() && roomId != 'general'
+        && hasExactly(['name', 'description', 'createdBy', 'createdAt'])
+        && isText(incoming().name, 1, 60)
+        && isText(incoming().description, 0, 280)
+        && incoming().createdBy == uid()
+        && createdNow();
+      allow update: if false;
+      // The room's creator or an admin can close a room.
+      allow delete: if active() && (existing().createdBy == uid() || isAdmin());
+
+      // ---- chatRooms/{id}/messages/{id} ----
+      match /messages/{messageId} {
+        function roomOpen() {
+          return roomId == 'general'
+            || exists(/databases/$(database)/documents/chatRooms/$(roomId));
+        }
+
+        allow read: if active() && roomOpen();
+        allow create: if active() && roomOpen()
+          && hasExactly(['senderId', 'text', 'createdAt'])
+          && incoming().senderId == uid()
+          && isText(incoming().text, 1, 2000)
+          && createdNow();
+        allow update: if false;
+        // Senders can take back their own message. Admins can remove any message.
+        allow delete: if active() && (existing().senderId == uid() || isAdmin());
+      }
+    }
   }
 }

@@ -17,6 +17,8 @@ import Members from './pages/Members.jsx';
 import MemberProfile from './pages/MemberProfile.jsx';
 import Messages from './pages/Messages.jsx';
 import Conversation from './pages/Conversation.jsx';
+import Chat from './pages/Chat.jsx';
+import ChatRoom from './pages/ChatRoom.jsx';
 import Me from './pages/Me.jsx';
 import EditProfile from './pages/EditProfile.jsx';
 import Admin from './pages/Admin.jsx';
@@ -50,6 +52,8 @@ function Gate() {
             <Route path="members/:memberId" element={<MemberProfile />} />
             <Route path="messages" element={<Messages />} />
             <Route path="messages/:conversationId" element={<Conversation />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="chat/:roomId" element={<ChatRoom />} />
             <Route path="me" element={<Me />}>
               <Route path="edit" element={<EditProfile />} />
             </Route>

@@ -155,3 +155,27 @@ export async function unbanMember(ban) {
   }
   await batch.commit();
 }
+
+// ---- Issue comments ----
+// Comments on an issue as a whole, separate from the comments on each task.
+
+export async function addIssueComment(uid, issueId, text) {
+  requireOnline();
+  const ref = await addDoc(collection(db, 'issueComments'), {
+    issueId,
+    authorId: uid,
+    text,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateIssueComment(id, text) {
+  requireOnline();
+  await updateDoc(doc(db, 'issueComments', id), { text });
+}
+
+export async function deleteIssueComment(id) {
+  requireOnline();
+  await deleteDoc(doc(db, 'issueComments', id));
+}

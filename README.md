@@ -157,6 +157,9 @@ npm run preview
 | `issues/{id}` | `title`, `description`, `status` (`open`, `in_progress`, `resolved`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `ownerId`, `createdAt` |
 | `tasks/{id}` | `issueId`, `title`, `description`, `status` (`todo`, `doing`, `done`), `assigneeId` (a uid or `null`), `dueDate` (optional: a `YYYY-MM-DD` day or `null`), `createdBy`, `createdAt` |
 | `comments/{id}` | `taskId`, `authorId`, `text`, `createdAt` |
+| `issueComments/{id}` | `issueId`, `authorId`, `text`, `createdAt`. Discussion on an issue as a whole. |
+| `chatRooms/{id}` | `name` (1–60 characters), `description` (0–280), `createdBy`, `createdAt`. Public chat rooms. |
+| `chatRooms/{id}/messages/{id}` | `senderId`, `text` (1–2000 characters), `createdAt` |
 | `admins/{uid}` | No fields needed. Added in the console only. |
 | `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
 
@@ -172,6 +175,12 @@ The UI expects the database owner to add:
 | `conversations/{conversationId}/messages/{messageId}` | `senderId`, `text` (1–2000 characters), `createdAt` |
 
 `conversationId` is the two participant UIDs sorted lexically, URI-encoded (with `~` encoded as `%7E`), then joined with `~`. The database rules must restrict reads to active participants, validate participants and sender identity, make message documents immutable, and require each message creation and conversation-summary update to happen atomically. Until those collections and rules exist, the in-app chat UI will not be able to read or send messages.
+
+### Issue discussion and community chat
+
+Each issue page has a **Discussion** section for talking about the issue as a whole (task comments stay on each task). Anyone can comment; the author can edit or delete their comment, and admins can delete any.
+
+**Chat** in the main navigation holds public rooms every member can read and post in. The **General** room is built in (its id is `general` and it has no document, so it always exists and can't be closed). Members can start new rooms; a room's creator or an admin can close it. Senders can delete their own messages and admins can delete any message. Messages can't be edited.
 
 ## Known limitation
 

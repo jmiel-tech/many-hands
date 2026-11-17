@@ -68,3 +68,17 @@ export function useOnline() {
   }, []);
   return online;
 }
+
+// Issue comments load per issue, so comments left behind by a deleted issue never show up anywhere.
+export function useIssueComments(issueId) {
+  const [comments, setComments] = useState(null);
+  useEffect(() => {
+    setComments(null);
+    return onSnapshot(
+      query(collection(db, 'issueComments'), where('issueId', '==', issueId)),
+      (s) => setComments(toRows(s)),
+      (error) => console.error(error),
+    );
+  }, [issueId]);
+  return comments;
+}

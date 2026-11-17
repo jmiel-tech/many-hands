@@ -489,3 +489,151 @@ test('non-admin cannot let someone back in', async () => {
 test('admin cannot create a profile for someone who was never banned', async () => {
   await assertFails(setDoc(doc(asUser('root'), 'members/carol'), { name: 'carol', email: 'carol@example.com', phone: '(555) 555-0100', createdAt: when }));
 });
+
+// ---- issue comments ----
+const issueComment = (authorId, extra = {}) => ({
+  issueId: 'issue1',
+  authorId,
+  text: 'Count me in.',
+  createdAt: serverTimestamp(),
+  ...extra,
+});
+const seedIssueComment = () => env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'issueComments/ic1'), issueComment('alice', { createdAt: when }));
+});
+
+test('signed-out user cannot read issue comments; members can', async () => {
+  await seedIssueComment();
+  await assertFails(getDoc(doc(signedOut(), 'issueComments/ic1')));
+  await assertSucceeds(getDoc(doc(asUser('bob'), 'issueComments/ic1')));
+});
+test('any member can comment on an issue as themselves', async () => {
+  await assertSucceeds(setDoc(doc(asUser('bob'), 'issueComments/ic2'), issueComment('bob')));
+});
+test('cannot comment on an issue as someone else', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'issueComments/ic2'), issueComment('alice')));
+});
+test('issue comments must be on an issue that exists', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'issueComments/ic2'), issueComment('bob', { issueId: 'nope' })));
+});
+test('issue comment validation: empty, too long and extra fields fail', async () => {
+  const db = asUser('bob');
+  await assertFails(setDoc(doc(db, 'issueComments/ic2'), issueComment('bob', { text: '' })));
+  await assertFails(setDoc(doc(db, 'issueComments/ic3'), issueComment('bob', { text: 'x'.repeat(2001) })));
+  await assertFails(setDoc(doc(db, 'issueComments/ic4'), issueComment('bob', { extra: true })));
+});
+test('only the author can edit an issue comment, and only its text', async () => {
+  await seedIssueComment();
+  await assertSucceeds(updateDoc(doc(asUser('alice'), 'issueComments/ic1'), { text: 'Edited' }));
+  await assertFails(updateDoc(doc(asUser('alice'), 'issueComments/ic1'), { issueId: 'other' }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'issueComments/ic1'), { text: 'Hacked' }));
+  await assertFails(updateDoc(doc(asUser('root'), 'issueComments/ic1'), { text: 'Admin edit' }));
+});
+test('author or admin can delete an issue comment, others cannot', async () => {
+  await seedIssueComment();
+  await assertFails(deleteDoc(doc(asUser('bob'), 'issueComments/ic1')));
+  await assertSucceeds(deleteDoc(doc(asUser('root'), 'issueComments/ic1')));
+  await seedIssueComment();
+  await assertSucceeds(deleteDoc(doc(asUser('alice'), 'issueComments/ic1')));
+});
+test('a banned member cannot read or write issue comments', async () => {
+  await seedIssueComment();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+  const db = asUser('alice');
+  await assertFails(getDoc(doc(db, 'issueComments/ic1')));
+  await assertFails(setDoc(doc(db, 'issueComments/ic2'), issueComment('alice')));
+  await assertFails(deleteDoc(doc(db, 'issueComments/ic1')));
+});
+
+// ---- public chat rooms ----
+const room = (createdBy, extra = {}) => ({
+  name: 'Park cleanup',
+  description: 'Saturday crew',
+  createdBy,
+  createdAt: serverTimestamp(),
+  ...extra,
+});
+const roomMessage = (senderId, extra = {}) => ({
+  senderId,
+  text: 'Hello everyone',
+  createdAt: serverTimestamp(),
+  ...extra,
+});
+const seedRoom = () => env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'chatRooms/room1'), room('alice', { createdAt: when }));
+  await setDoc(doc(db, 'chatRooms/room1/messages/m1'), roomMessage('alice', { createdAt: when }));
+  await setDoc(doc(db, 'chatRooms/general/messages/g1'), roomMessage('alice', { createdAt: when }));
+});
+
+test('members can read rooms and their messages; signed-out users cannot', async () => {
+  await seedRoom();
+  for (const path of ['chatRooms/room1', 'chatRooms/room1/messages/m1', 'chatRooms/general/messages/g1']) {
+    await assertFails(getDoc(doc(signedOut(), path)));
+    await assertSucceeds(getDoc(doc(asUser('bob'), path)));
+  }
+});
+test('any member can start a room as themselves', async () => {
+  await assertSucceeds(setDoc(doc(asUser('bob'), 'chatRooms/r2'), room('bob')));
+  await assertFails(setDoc(doc(asUser('bob'), 'chatRooms/r3'), room('alice')));
+});
+test('room validation: name and description length, exact fields', async () => {
+  const db = asUser('bob');
+  await assertFails(setDoc(doc(db, 'chatRooms/r2'), room('bob', { name: '' })));
+  await assertFails(setDoc(doc(db, 'chatRooms/r3'), room('bob', { name: 'x'.repeat(61) })));
+  await assertFails(setDoc(doc(db, 'chatRooms/r4'), room('bob', { description: 'x'.repeat(281) })));
+  await assertFails(setDoc(doc(db, 'chatRooms/r5'), room('bob', { extra: true })));
+});
+test('nobody can create, edit or delete the built-in General room document', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'chatRooms/general'), room('bob')));
+  await assertFails(setDoc(doc(asUser('root'), 'chatRooms/general'), room('root')));
+});
+test('rooms cannot be edited after creation', async () => {
+  await seedRoom();
+  await assertFails(updateDoc(doc(asUser('alice'), 'chatRooms/room1'), { name: 'Renamed' }));
+});
+test('creator or admin can close a room, others cannot', async () => {
+  await seedRoom();
+  await assertFails(deleteDoc(doc(asUser('bob'), 'chatRooms/room1')));
+  await assertSucceeds(deleteDoc(doc(asUser('root'), 'chatRooms/room1')));
+  await seedRoom();
+  await assertSucceeds(deleteDoc(doc(asUser('alice'), 'chatRooms/room1')));
+});
+test('any member can post in General and in an existing room as themselves', async () => {
+  await seedRoom();
+  await assertSucceeds(setDoc(doc(asUser('bob'), 'chatRooms/general/messages/g2'), roomMessage('bob')));
+  await assertSucceeds(setDoc(doc(asUser('bob'), 'chatRooms/room1/messages/m2'), roomMessage('bob')));
+  await assertFails(setDoc(doc(asUser('bob'), 'chatRooms/room1/messages/m3'), roomMessage('alice')));
+});
+test('cannot post in a room that does not exist', async () => {
+  await assertFails(setDoc(doc(asUser('bob'), 'chatRooms/nope/messages/m1'), roomMessage('bob')));
+});
+test('room message validation: empty, too long and extra fields fail', async () => {
+  const db = asUser('bob');
+  await assertFails(setDoc(doc(db, 'chatRooms/general/messages/a'), roomMessage('bob', { text: '' })));
+  await assertFails(setDoc(doc(db, 'chatRooms/general/messages/b'), roomMessage('bob', { text: 'x'.repeat(2001) })));
+  await assertFails(setDoc(doc(db, 'chatRooms/general/messages/c'), roomMessage('bob', { extra: 1 })));
+});
+test('room messages cannot be edited', async () => {
+  await seedRoom();
+  await assertFails(updateDoc(doc(asUser('alice'), 'chatRooms/general/messages/g1'), { text: 'Edited' }));
+});
+test('sender or admin can delete a room message, others cannot', async () => {
+  await seedRoom();
+  await assertFails(deleteDoc(doc(asUser('bob'), 'chatRooms/general/messages/g1')));
+  await assertSucceeds(deleteDoc(doc(asUser('root'), 'chatRooms/general/messages/g1')));
+  await assertSucceeds(deleteDoc(doc(asUser('alice'), 'chatRooms/room1/messages/m1')));
+});
+test('a banned member cannot read or post in public chat', async () => {
+  await seedRoom();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'bans/alice'), savedBan);
+  });
+  const db = asUser('alice');
+  await assertFails(getDoc(doc(db, 'chatRooms/room1')));
+  await assertFails(getDoc(doc(db, 'chatRooms/general/messages/g1')));
+  await assertFails(setDoc(doc(db, 'chatRooms/general/messages/g2'), roomMessage('alice')));
+  await assertFails(setDoc(doc(db, 'chatRooms/r9'), room('alice')));
+});

@@ -7,6 +7,7 @@ import { groupTasks, healthSentence, issueHealth } from '../lib/health.js';
 import { adminDeleteIssue } from '../lib/api.js';
 import { TopBar } from '../components/Layout.jsx';
 import { HeldTaskCard, OpenTaskCard } from '../components/cards.jsx';
+import IssueComments from '../components/IssueComments.jsx';
 import { Avatar, ConfirmRow, DueBadge, ErrorNote, HealthBadge, Icons, StatusBadge } from '../components/ui.jsx';
 
 const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -150,6 +151,8 @@ export default function IssueDetail() {
           <Group id="group-done" title="Done" chip="Covered" tasks={groups.done} empty="Nothing finished yet." />
         </div>
       </section>
+
+      <IssueComments issueId={issue.id} />
 
       <details className="legend">
         <summary className="textlink">How these labels work</summary>
