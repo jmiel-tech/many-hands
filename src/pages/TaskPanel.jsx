@@ -5,7 +5,7 @@ import { useComments, useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { addComment, deleteComment, deleteTask, updateComment, updateTask } from '../lib/api.js';
 import { TakeButton } from '../components/cards.jsx';
-import { Avatar, ConfirmRow, DueBadge, ErrorNote, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
+import { Avatar, ConfirmRow, DueBadge, ErrorNote, LockNote, Modal, StatusBadge, StatusSelect, firstName, formatWhen } from '../components/ui.jsx';
 
 function Comment({ comment }) {
   const { user } = useAuth();
@@ -180,13 +180,15 @@ export default function TaskPanel() {
           {confirming && (
             <ConfirmRow question="Delete this task for everyone?" busy={busy} onConfirm={remove} onCancel={() => setConfirming(false)} />
           )}
-          <div className="row-badges">
-            <StatusBadge status={task.status} />
-            <DueBadge item={task} />
-          </div>
           {canEdit
             ? <InlineField label="Title" className="field title-field" value={task.title} required maxLength={120} onSave={(title) => run(() => updateTask(task.id, { title }))} />
             : <h1>{task.title}</h1>}
+          <div className="row-badges">
+            {canEdit && task.assigneeId
+              ? <StatusSelect value={task.status} onChange={setStatus} disabled={busy} />
+              : <StatusBadge status={task.status} />}
+            <DueBadge item={task} />
+          </div>
           {task.assigneeId ? (
             <div className="assigned-row">
               <Link to={mine ? '/me' : `/members/${task.assigneeId}`} className="assignee-chip">
@@ -206,12 +208,6 @@ export default function TaskPanel() {
               ? <InlineField label="Description" multiline value={task.description} maxLength={2000} placeholder="What does this involve? Where?" onSave={(description) => run(() => updateTask(task.id, { description }))} />
               : <p className="preline">{task.description || 'No description yet.'}</p>}
           </div>
-
-          {canEdit && task.assigneeId && (
-            <div className="owner-box">
-              <Segmented label="Status" name="task-status" options={TASK_STATUS} value={task.status} onChange={setStatus} disabled={busy} />
-            </div>
-          )}
           <ErrorNote>{error}</ErrorNote>
           {!issueOwner && !mine && task.assigneeId && (
             <div className="lock-box"><LockNote>Only {firstName(assigneeName)} can edit, update or delete this task.</LockNote></div>

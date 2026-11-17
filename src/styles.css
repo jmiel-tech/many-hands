@@ -118,6 +118,8 @@ button:disabled { cursor: default; opacity: 0.6; }
 .badge-due { align-self: flex-start; }
 .row-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .tone-accent { background: var(--accent); color: var(--on-accent); }
+.badge-select { appearance: none; min-height: var(--tap); padding-right: calc(var(--space-3) + 18px); border: 0; cursor: pointer; font-family: inherit; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.badge-select option { background: var(--surface-raised); color: var(--ink); }
 .lock { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; color: var(--ink-2); }
 .lock svg { flex-shrink: 0; }
 

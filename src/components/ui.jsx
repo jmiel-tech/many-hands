@@ -101,6 +101,21 @@ export function StatusBadge({ status }) {
   );
 }
 
+// A native select styled like the status badge, so it is still readable and keyboard friendly.
+export function StatusSelect({ value, onChange, disabled }) {
+  return (
+    <select
+      aria-label="Status"
+      className={`badge badge-select tone-${STATUS_TONE[value]}`}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {Object.entries(TASK_STATUS).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+    </select>
+  );
+}
+
 // The text says "Overdue", so the warning never depends on color alone.
 // Takes a task or an issue.
 export function DueBadge({ item }) {
