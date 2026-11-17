@@ -21,7 +21,7 @@ import {
 export default function TaskForm() {
   const { issueId: routeIssueId, taskId } = useParams();
   const { user } = useAuth();
-  const { tasks, members, nameOf } = useData();
+  const { tasks, issues, members, nameOf } = useData();
   const navigate = useNavigate();
 
   const task = tasks.find((t) => t.id === taskId);
@@ -63,8 +63,10 @@ export default function TaskForm() {
   const requestClose = () =>
     dirty ? setDiscarding(true) : close();
 
-  // Only the assigned user can edit an existing task.
-  if (isEdit && task?.assigneeId !== user.uid) {
+  const issueOwner = issues.find((i) => i.id === routeIssueId)?.ownerId === user.uid;
+
+  // Only the assignee or the issue's owner can edit an existing task.
+  if (isEdit && task?.assigneeId !== user.uid && !issueOwner) {
     return (
       <Modal title="Edit task" onClose={close}>
         <FormHead title="Not yours to edit." />
@@ -146,7 +148,7 @@ export default function TaskForm() {
         title={isEdit ? 'Edit task.' : 'New task.'}
         subtitle={
           isEdit
-            ? "It's assigned to you, so it's yours to change."
+            ? "You can change anything on this task."
             : 'Add something the group needs done.'
         }
       />

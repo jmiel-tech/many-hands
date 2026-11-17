@@ -227,7 +227,7 @@ export function ConfirmRow({ question, onConfirm, onCancel, busy, confirmLabel =
 
 // Native <dialog>: focus trap, Esc, and backdrop come from the browser. CSS makes it a
 // full-screen page under 900px, and a centered card or a side panel at 900px and up.
-export function Modal({ title, variant = 'form', closeLabel = 'Cancel', onClose, children }) {
+export function Modal({ title, variant = 'form', closeLabel = 'Cancel', onClose, hideTitle = false, action = null, children }) {
   const ref = useRef(null);
   const unmounting = useRef(false);
   const titleId = useId();
@@ -267,8 +267,8 @@ export function Modal({ title, variant = 'form', closeLabel = 'Cancel', onClose,
       <div className="modal-inner">
         <header className="modal-bar">
           <button type="button" className="modal-close" onClick={onClose}>{closeLabel}</button>
-          <span id={titleId} className="modal-title">{title}</span>
-          <span className="modal-spacer" aria-hidden="true" />
+          <span id={titleId} className={hideTitle ? 'sr-only' : 'modal-title'}>{title}</span>
+          {action ? <span className="modal-action">{action}</span> : <span className="modal-spacer" aria-hidden="true" />}
         </header>
         {children}
       </div>

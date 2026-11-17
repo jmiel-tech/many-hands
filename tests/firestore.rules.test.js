@@ -304,7 +304,7 @@ test('issue owner can delete any task on their issue, including others\' and una
   await assertSucceeds(deleteDoc(doc(asUser('alice'), 'tasks/bobs')));
   await assertSucceeds(deleteDoc(doc(asUser('alice'), 'tasks/open')));
 });
-test('issue owner can reassign or unassign any task on their issue, but not edit other fields', async () => {
+test('issue owner can edit any task on their issue, but not move it or change its creator', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'tasks/bobs'), task('bob', 'bob', { createdAt: when }));
   });
@@ -313,7 +313,9 @@ test('issue owner can reassign or unassign any task on their issue, but not edit
   await assertSucceeds(updateDoc(doc(db, 'tasks/open'), { assigneeId: 'bob' }));
   await assertSucceeds(updateDoc(doc(db, 'tasks/open'), { assigneeId: null, status: 'todo' }));
   await assertFails(updateDoc(doc(db, 'tasks/open'), { assigneeId: 'ghost' }));
-  await assertFails(updateDoc(doc(db, 'tasks/open'), { assigneeId: 'bob', title: 'Hacked' }));
+  await assertSucceeds(updateDoc(doc(db, 'tasks/open'), { assigneeId: 'bob', title: 'Renamed', description: 'New text' }));
+  await assertFails(updateDoc(doc(db, 'tasks/open'), { issueId: 'other' }));
+  await assertFails(updateDoc(doc(db, 'tasks/open'), { createdBy: 'bob' }));
 });
 test('a member who does not own the issue still cannot reassign or delete', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {

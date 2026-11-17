@@ -161,10 +161,10 @@ service cloud.firestore {
       let issuePath = /databases/$(database)/documents/issues/$(existing().issueId);
       return exists(issuePath) && get(issuePath).data.ownerId == uid();
     }
-    // Issue owner: can reassign (or free) any task on their issue, changing only the assignee and status.
-    function isOwnerReassign() {
+    // Issue owner: can edit any task on their issue, except who created it and which issue it belongs to.
+    function isOwnerEdit() {
       return ownsTaskIssue() && validTask()
-        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId', 'status']);
+        && unchanged('issueId') && unchanged('createdBy') && unchanged('createdAt');
     }
 
     match /tasks/{taskId} {
@@ -175,7 +175,7 @@ service cloud.firestore {
       allow update: if active() && (
         isClaim()
         || isAdminRelease()
-        || isOwnerReassign()
+        || isOwnerEdit()
         || (existing().assigneeId == uid() && validTask()
             && unchanged('issueId') && unchanged('createdBy') && unchanged('createdAt'))
       );

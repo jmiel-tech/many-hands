@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useComments, useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { addComment, deleteComment, deleteTask, updateComment, updateTask } from '../lib/api.js';
 import { TakeButton } from '../components/cards.jsx';
-import { Avatar, ConfirmRow, DueBadge, ErrorNote, Icons, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
+import { Avatar, ConfirmRow, DueBadge, ErrorNote, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen } from '../components/ui.jsx';
 
 function Comment({ comment }) {
   const { user } = useAuth();
@@ -79,14 +79,10 @@ function Comments({ taskId }) {
     });
   };
 
-  const count = comments?.length ?? 0;
   return (
     <section aria-labelledby="h-comments" className="comments">
-      <div className="row-baseline">
-        <h2 id="h-comments">Comments</h2>
-        <span className="muted">{count} {count === 1 ? 'comment' : 'comments'}</span>
-      </div>
-      {comments && count > 0 && (
+      <h2 id="h-comments">Comments</h2>
+      {comments && comments.length > 0 && (
         <ul className="comment-list">
           {comments.map((c) => <Comment key={c.id} comment={c} />)}
         </ul>
@@ -97,15 +93,43 @@ function Comments({ taskId }) {
         <button type="submit" className="pill" disabled={busy || !draft.trim()}>Post</button>
       </form>
       <ErrorNote>{error}</ErrorNote>
-      <span className="muted-sm">Everyone can comment. Only the author can edit or delete their comment.</span>
     </section>
   );
+}
+
+// Saves on blur. An empty value is reverted when the field is required.
+function InlineField({ value, label, onSave, multiline = false, required = false, className = 'field', ...props }) {
+  const [draft, setDraft] = useState(value);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(value);
+  }, [value, focused]);
+
+  const commit = () => {
+    setFocused(false);
+    const next = draft.trim();
+    if (required && !next) setDraft(value);
+    else if (next !== value) onSave(next);
+  };
+
+  const shared = {
+    'aria-label': label,
+    className,
+    value: draft,
+    onChange: (e) => setDraft(e.target.value),
+    onFocus: () => setFocused(true),
+    onBlur: commit,
+    ...props,
+  };
+  return multiline
+    ? <textarea rows={4} {...shared} />
+    : <input type="text" {...shared} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />;
 }
 
 export default function TaskPanel() {
   const { issueId, taskId } = useParams();
   const { user } = useAuth();
-  const { tasks, issues, members, nameOf } = useData();
+  const { tasks, issues, nameOf } = useData();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const { busy, error, run } = useAction();
@@ -127,81 +151,68 @@ export default function TaskPanel() {
 
   const mine = task.assigneeId === user.uid;
   const issueOwner = issue?.ownerId === user.uid;
+  const canEdit = mine || issueOwner;
   const assigneeName = task.assigneeId ? nameOf(task.assigneeId) : null;
 
   const setStatus = (status) => run(() => updateTask(task.id, { status }));
   const giveBack = () => run(() => updateTask(task.id, { assigneeId: null, status: 'todo' }));
-  const reassign = (e) => {
-    const assigneeId = e.target.value || null;
-    run(() => updateTask(task.id, assigneeId ? { assigneeId } : { assigneeId, status: 'todo' }));
-  };
   const remove = () => run(async () => {
     await deleteTask(task.id);
     close();
   });
 
   return (
-    <Modal title={task.title} variant="panel" closeLabel="‹ Back" onClose={close}>
+    <Modal
+      title={task.title}
+      hideTitle
+      variant="panel"
+      closeLabel="‹ Back"
+      onClose={close}
+      action={canEdit && !confirming && (
+        <>
+          <Link to="edit" className="textlink">Edit</Link>
+          <button type="button" className="textlink danger" onClick={() => setConfirming(true)}>Delete</button>
+        </>
+      )}
+    >
       <div className="panel-body">
         <section aria-label="Task" className="stack">
+          {confirming && (
+            <ConfirmRow question="Delete this task for everyone?" busy={busy} onConfirm={remove} onCancel={() => setConfirming(false)} />
+          )}
           <div className="row-badges">
             <StatusBadge status={task.status} />
             <DueBadge item={task} />
           </div>
-          <h1>{task.title}</h1>
+          {canEdit
+            ? <InlineField label="Title" className="field title-field" value={task.title} required maxLength={120} onSave={(title) => run(() => updateTask(task.id, { title }))} />
+            : <h1>{task.title}</h1>}
           {task.assigneeId ? (
-            <Link to={mine ? '/me' : `/members/${task.assigneeId}`} className="assignee-chip">
-              <Avatar id={task.assigneeId} name={assigneeName} size={36} />
-              Assigned to {mine ? 'you' : assigneeName}
-            </Link>
+            <div className="assigned-row">
+              <Link to={mine ? '/me' : `/members/${task.assigneeId}`} className="assignee-chip">
+                <Avatar id={task.assigneeId} name={assigneeName} size={36} />
+                Assigned to {mine ? 'you' : assigneeName}
+              </Link>
+              {canEdit && <button type="button" className="textlink" onClick={giveBack} disabled={busy}>Give it back</button>}
+            </div>
           ) : (
             <div className="take-box">
-              <span className="muted">No one yet. Take it and it's yours.</span>
               <TakeButton taskId={task.id} />
             </div>
           )}
           <div className="desc-card">
             <span className="field-label">Description</span>
-            <p className="preline">{task.description || 'No description yet.'}</p>
-            <span className="muted-sm">
-              Part of <Link to={`/issues/${issueId}`}>{issue?.title || 'this issue'}</Link> · created by {nameOf(task.createdBy)}
-            </span>
+            {canEdit
+              ? <InlineField label="Description" multiline value={task.description} maxLength={2000} placeholder="What does this involve? Where?" onSave={(description) => run(() => updateTask(task.id, { description }))} />
+              : <p className="preline">{task.description || 'No description yet.'}</p>}
           </div>
 
-          {mine && (
+          {canEdit && task.assigneeId && (
             <div className="owner-box">
-              <Segmented label="Update status" name="task-status" options={TASK_STATUS} value={task.status} onChange={setStatus} disabled={busy} />
-              {!confirming ? (
-                <div className="row-gap">
-                  <Link to="edit" className="textlink">Edit task<Icons.chevron /></Link>
-                  <button type="button" className="textlink" onClick={giveBack} disabled={busy}>Give it back</button>
-                  <button type="button" className="textlink danger" onClick={() => setConfirming(true)}>Delete</button>
-                </div>
-              ) : (
-                <ConfirmRow question="Delete this task for everyone?" busy={busy} onConfirm={remove} onCancel={() => setConfirming(false)} />
-              )}
-              <ErrorNote>{error}</ErrorNote>
+              <Segmented label="Status" name="task-status" options={TASK_STATUS} value={task.status} onChange={setStatus} disabled={busy} />
             </div>
           )}
-          {issueOwner && !mine && (
-            <div className="owner-box">
-              <label className="lbl">
-                Assigned to
-                <select className="field select" value={task.assigneeId ?? ''} onChange={reassign} disabled={busy}>
-                  <option value="">Unassigned</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.id === user.uid ? `${m.name} (you)` : m.name}</option>)}
-                </select>
-              </label>
-              {!confirming ? (
-                <div className="row-gap">
-                  <button type="button" className="textlink danger" onClick={() => setConfirming(true)}>Delete</button>
-                </div>
-              ) : (
-                <ConfirmRow question="Delete this task for everyone?" busy={busy} onConfirm={remove} onCancel={() => setConfirming(false)} />
-              )}
-              <ErrorNote>{error}</ErrorNote>
-            </div>
-          )}
+          <ErrorNote>{error}</ErrorNote>
           {!issueOwner && !mine && task.assigneeId && (
             <div className="lock-box"><LockNote>Only {firstName(assigneeName)} can edit, update or delete this task.</LockNote></div>
           )}
