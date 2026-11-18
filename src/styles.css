@@ -215,6 +215,12 @@ button:disabled { cursor: default; opacity: 0.6; }
 .section-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-bottom: var(--space-8); text-align: center; }
 .empty { padding: var(--space-6); border-radius: var(--radius-card-sm); background: var(--empty-bg); text-align: center; color: var(--ink-2); }
 .band-alt .empty, .md-cards .empty { background: var(--empty-on-alt); }
+.help-section { max-width: 760px; }
+.help-faqs { display: flex; flex-direction: column; gap: var(--space-3); }
+.help-faq { padding: var(--space-5) var(--space-6); border-radius: var(--radius-card-sm); background: var(--surface); }
+.help-faq summary { cursor: pointer; font-size: 17px; font-weight: 600; }
+.help-faq p { margin-top: var(--space-3); color: var(--ink-2); line-height: 1.5; }
+.help-ticket-form { display: flex; flex-direction: column; gap: var(--space-5); }
 .grid { display: grid; gap: var(--space-4); min-width: 0; }
 .more-link { margin-top: var(--space-5); }
 
@@ -477,6 +483,8 @@ textarea.field { padding: var(--space-3) var(--space-4); line-height: 1.4; resiz
 .admin-row-text strong { font-size: 17px; font-weight: 600; color: var(--ink); }
 .admin-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-5); }
 .admin-row .confirm { max-width: none; }
+.support-ticket { align-items: flex-start; }
+.support-ticket-details { white-space: pre-wrap; }
 .admin-note { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; font-weight: 600; color: var(--orphan-fg); }
 
 /* ---- Calendar: dots on phones, titled chips from 900px ---- */

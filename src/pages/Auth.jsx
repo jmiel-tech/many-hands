@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { COMMUNITY_NAME } from '../firebase.config.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useAction } from '../lib/errors.js';
@@ -90,9 +91,15 @@ export default function AuthPage() {
             {busy ? 'One moment…' : isLogin ? 'Log in' : 'Create account'}
           </button>
           {isLogin ? (
-            <button type="button" className="textlink center" onClick={forgot}>Forgot your password?</button>
+            <>
+              <button type="button" className="textlink center" onClick={forgot}>Forgot your password?</button>
+              <Link to="/help" className="textlink center">Help and support</Link>
+            </>
           ) : (
-            <p className="hint center-text">Other members will see your name, email and phone. Only you can change them.</p>
+            <>
+              <p className="hint center-text">Other members will see your name, email and phone. Only you can change them.</p>
+              <Link to="/help" className="textlink center">Help and support</Link>
+            </>
           )}
         </form>
       </div>

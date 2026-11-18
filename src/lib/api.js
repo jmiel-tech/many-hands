@@ -40,6 +40,20 @@ export async function createIssue(uid, { title, description, status, dueDate }) 
   return ref.id;
 }
 
+export async function createSupportTicket(uid, { email, subject, category, details }) {
+  requireOnline();
+  const ref = await addDoc(collection(db, 'supportTickets'), {
+    ownerId: uid || null,
+    email,
+    subject,
+    category,
+    details,
+    status: 'open',
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
 export async function updateIssue(id, patch) {
   requireOnline();
   await updateDoc(doc(db, 'issues', id), patch);

@@ -57,6 +57,16 @@ const comment = (authorId, extra = {}) => ({
   createdAt: serverTimestamp(),
   ...extra,
 });
+const supportTicket = (ownerId, extra = {}) => ({
+  ownerId,
+  email: ownerId ? `${ownerId}@example.com` : 'visitor@example.com',
+  subject: 'Help with my account',
+  category: 'account',
+  details: 'I need help signing in.',
+  status: 'open',
+  createdAt: serverTimestamp(),
+  ...extra,
+});
 
 before(async () => {
   env = await initializeTestEnvironment({
@@ -120,6 +130,34 @@ test('profile email cannot be set to something other than the login email', asyn
 test('owner can delete their profile, non-owner cannot', async () => {
   await assertFails(deleteDoc(doc(asUser('bob'), 'members/alice')));
   await assertSucceeds(deleteDoc(doc(asUser('alice'), 'members/alice')));
+});
+
+// ---- support tickets ----
+test('a member can submit a valid support ticket, and only admins can read it', async () => {
+  await assertSucceeds(setDoc(doc(asUser('alice'), 'supportTickets/ticket1'), supportTicket('alice')));
+  await assertSucceeds(getDoc(doc(asUser('root'), 'supportTickets/ticket1')));
+  await assertFails(getDoc(doc(asUser('bob'), 'supportTickets/ticket1')));
+});
+test('a signed-out visitor can submit a ticket with a reply email', async () => {
+  await assertSucceeds(setDoc(doc(signedOut(), 'supportTickets/visitor1'), supportTicket(null)));
+  await assertSucceeds(getDoc(doc(asUser('root'), 'supportTickets/visitor1')));
+  await assertFails(getDoc(doc(signedOut(), 'supportTickets/visitor1')));
+  await assertFails(setDoc(doc(signedOut(), 'supportTickets/no-email'), supportTicket(null, { email: '' })));
+});
+test('support tickets must belong to the sender and have valid fields', async () => {
+  const db = asUser('alice');
+  await assertFails(setDoc(doc(db, 'supportTickets/other-owner'), supportTicket('bob')));
+  await assertFails(setDoc(doc(db, 'supportTickets/other-email'), supportTicket('alice', { email: 'other@example.com' })));
+  await assertFails(setDoc(doc(db, 'supportTickets/bad-category'), supportTicket('alice', { category: 'security' })));
+  await assertFails(setDoc(doc(db, 'supportTickets/too-long'), supportTicket('alice', { subject: 'x'.repeat(121) })));
+  await assertFails(setDoc(doc(db, 'supportTickets/extra-field'), supportTicket('alice', { admin: true })));
+});
+test('support tickets cannot be edited or deleted after submission', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'supportTickets/ticket1'), supportTicket('alice', { createdAt: when }));
+  });
+  await assertFails(updateDoc(doc(asUser('root'), 'supportTickets/ticket1'), { status: 'closed' }));
+  await assertFails(deleteDoc(doc(asUser('root'), 'supportTickets/ticket1')));
 });
 test('member validation: missing field, extra field, and too-long name fail', async () => {
   const db = asUser('carol');

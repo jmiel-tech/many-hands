@@ -97,7 +97,7 @@ Also confirm that the browser offers to install the app, and that it still opens
 
 ### 7. Make yourself an admin
 
-Admins get an **Admin** tab where they can kick members and edit or delete any issue. For safety, admins can only be added in the Firebase console, never from the app.
+Admins get an **Admin** tab where they can kick members, edit or delete any issue, and review submitted support tickets. For safety, admins can only be added in the Firebase console, never from the app. Anyone can open **Help** for FAQs, email support at `jamielke@svsu.edu`, and submit a support ticket. Signed-out visitors provide an email address so support can reply.
 
 1. In the Firebase console, open **Authentication > Users** and copy the person's **User UID**.
 2. Open **Firestore Database > Data**, click **Start collection**, and name it `admins`.
@@ -106,6 +106,19 @@ Admins get an **Admin** tab where they can kick members and edit or delete any i
 To remove an admin, delete their document from `admins`.
 
 **What kicking does:** it adds the person to `bans`, deletes their profile, and puts their tasks back to Unclaimed. Their login still exists, but the rules refuse everything they try and the app tells them they've been removed. An admin can undo this from **Admin > Removed > Let back in**, which puts their profile back as it was. Their old tasks stay Unclaimed. To delete the login itself, use **Authentication > Users** in the console.
+
+### Sending support email from the app
+
+The Help email form sends through the Cloudflare Worker and Resend; it does not open the visitor's mail app. In Resend, verify a sender domain and set `SUPPORT_FROM_EMAIL` in `worker/wrangler.toml` to an address on that domain. Then, from the `worker` directory, add the API key as a Worker secret and deploy:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+npm run deploy
+```
+
+The key stays server-side. The Worker rate-limits email submissions and routes replies to the address supplied in the form. Until the Worker has a verified sender and the Resend secret configured, direct email sending will report that the service is unavailable.
+
+Support tickets are separate from email delivery and are stored in Firestore for admins to review. After changing `firestore.rules`, publish the current rules to the Firebase project (the GitHub Actions rules workflow does this after the change is pushed to `main`). Until the deployed rules include `supportTickets`, Firestore rejects submissions with `permission-denied`.
 
 ## Run the tests
 
@@ -160,6 +173,7 @@ npm run preview
 | `issueComments/{id}` | `issueId`, `authorId`, `text`, `createdAt`. Discussion on an issue as a whole. |
 | `chatRooms/{id}` | `name` (1–60 characters), `description` (0–280), `createdBy`, `createdAt`. Public chat rooms. |
 | `chatRooms/{id}/messages/{id}` | `senderId`, `text` (1–2000 characters), `createdAt` |
+| `supportTickets/{id}` | `ownerId` (a member UID or `null` for a visitor), `email`, `subject`, `category` (`bug`, `account`, `other`), `details`, `status` (`open`), `createdAt`. Members and signed-out visitors can submit; admins can read. |
 | `admins/{uid}` | No fields needed. Added in the console only. |
 | `bans/{uid}` | `name`, `email`, `phone`, `memberCreatedAt` (a saved copy of the profile), `bannedBy`, `createdAt` |
 

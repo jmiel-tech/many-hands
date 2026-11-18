@@ -131,6 +131,24 @@ service cloud.firestore {
       allow delete: if active() && (existing().ownerId == uid() || isAdmin());
     }
 
+    // ---- supportTickets/{id} ----
+    // Signed-in members and guests can submit tickets; only admins can read them.
+    match /supportTickets/{ticketId} {
+      allow read: if isAdmin();
+      allow create: if hasExactly(['ownerId', 'email', 'subject', 'category', 'details', 'status', 'createdAt'])
+        && isText(incoming().email, 3, 254)
+        && isText(incoming().subject, 1, 120)
+        && incoming().category in ['bug', 'account', 'other']
+        && isText(incoming().details, 1, 3000)
+        && incoming().status == 'open'
+        && (
+          (active() && incoming().ownerId == uid() && incoming().email == request.auth.token.email)
+          || (request.auth == null && incoming().ownerId == null)
+        )
+        && createdNow();
+      allow update, delete: if false;
+    }
+
     // ---- tasks/{id} ----
     function validTask() {
       return incoming().keys().hasAll(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])

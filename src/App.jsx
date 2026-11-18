@@ -22,11 +22,21 @@ import ChatRoom from './pages/ChatRoom.jsx';
 import Me from './pages/Me.jsx';
 import EditProfile from './pages/EditProfile.jsx';
 import Admin from './pages/Admin.jsx';
+import Help from './pages/Help.jsx';
 
 function Gate() {
   const { user, member, banned, isAdmin } = useAuth();
   if (user === undefined) return <Loading />;
-  if (!user) return <AuthPage />;
+  if (!user) {
+    return (
+      <HashRouter>
+        <Routes>
+          <Route path="help" element={<Help />} />
+          <Route path="*" element={<AuthPage />} />
+        </Routes>
+      </HashRouter>
+    );
+  }
   if (banned === undefined) return <Loading />;
   if (banned) return <Removed />;
   if (member === undefined) return <Loading />;
@@ -54,6 +64,7 @@ function Gate() {
             <Route path="messages/:conversationId" element={<Conversation />} />
             <Route path="chat" element={<Chat />} />
             <Route path="chat/:roomId" element={<ChatRoom />} />
+            <Route path="help" element={<Help />} />
             <Route path="me" element={<Me />}>
               <Route path="edit" element={<EditProfile />} />
             </Route>

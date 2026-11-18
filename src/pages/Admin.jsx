@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
-import { useAction } from '../lib/errors.js';
+import { friendlyError, useAction } from '../lib/errors.js';
 import { adminDeleteIssue, kickMember, unbanMember } from '../lib/api.js';
+import { openConversation } from '../lib/chat.js';
 import { TopBar } from '../components/Layout.jsx';
 import { Avatar, ConfirmRow, ErrorNote, StatusBadge, formatWhen } from '../components/ui.jsx';
 
@@ -21,6 +22,23 @@ function useCollectionIds(name) {
     },
   ), [name]);
   return rows;
+}
+
+function useSupportTickets() {
+  const [tickets, setTickets] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => onSnapshot(
+    collection(db, 'supportTickets'),
+    (snapshot) => {
+      setTickets(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setError('');
+    },
+    (reason) => {
+      console.error(reason);
+      setError(friendlyError(reason));
+    },
+  ), []);
+  return { tickets, error };
 }
 
 function MemberRow({ member, isSelf, isOtherAdmin, heldTaskIds }) {
@@ -117,11 +135,51 @@ function IssueRow({ issue, taskIds, ownerName }) {
   );
 }
 
+function SupportTicketRow({ ticket, nameOf, memberById }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { busy, error, run } = useAction();
+  const requester = memberById.get(ticket.ownerId);
+  const requesterName = ticket.ownerId ? nameOf(ticket.ownerId) : 'Signed-out visitor';
+  const requesterEmail = ticket.email || requester?.email;
+
+  const messageRequester = () => run(async () => {
+    const conversationId = await openConversation(user.uid, ticket.ownerId);
+    navigate(`/messages/${conversationId}`);
+  });
+
+  return (
+    <li className="admin-row support-ticket">
+      <div className="admin-row-main">
+        <span className="admin-row-text">
+          <strong>{ticket.subject}</strong>
+          <span>{requesterName} · {ticket.category} · {formatWhen(ticket.createdAt)}</span>
+          {requesterEmail && <a href={`mailto:${requesterEmail}`}>{requesterEmail}</a>}
+          <span className="support-ticket-details">{ticket.details}</span>
+        </span>
+      </div>
+      <div className="admin-row-actions">
+        <span className="badge tone-open">Open</span>
+        {requester && ticket.ownerId !== user.uid ? (
+          <button type="button" className="textlink" onClick={messageRequester} disabled={busy}>
+            {busy ? 'Opening…' : 'Message'}
+          </button>
+        ) : requesterEmail ? (
+          <a className="textlink" href={`mailto:${requesterEmail}`}>Email</a>
+        ) : null}
+      </div>
+      {!requester && ticket.ownerId && <span className="hint">The requester is no longer an active member.</span>}
+      <ErrorNote>{error}</ErrorNote>
+    </li>
+  );
+}
+
 export default function Admin() {
   const { user } = useAuth();
-  const { members, issues, tasks, nameOf } = useData();
+  const { members, issues, tasks, nameOf, memberById } = useData();
   const admins = useCollectionIds('admins');
   const bans = useCollectionIds('bans');
+  const { tickets, error: ticketsError } = useSupportTickets();
   const adminIds = new Set((admins || []).map((a) => a.id));
 
   return (
@@ -179,6 +237,24 @@ export default function Admin() {
             </ul>
           ) : (
             <p className="empty">No issues yet.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="band" aria-labelledby="h-admin-support">
+        <div className="band-inner narrow stack-md">
+          <h2 id="h-admin-support" className="headline-sm">Support tickets.</h2>
+          <ErrorNote>{ticketsError}</ErrorNote>
+          {tickets === null ? (
+            !ticketsError && <p className="empty">Loading…</p>
+          ) : tickets.length ? (
+            <ul className="admin-list">
+              {[...tickets].sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)).map((ticket) => (
+                <SupportTicketRow key={ticket.id} ticket={ticket} nameOf={nameOf} memberById={memberById} />
+              ))}
+            </ul>
+          ) : (
+            <p className="empty">No support tickets yet.</p>
           )}
         </div>
       </section>

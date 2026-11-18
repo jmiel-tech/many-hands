@@ -1,4 +1,4 @@
-# Many Hands chat proxy. Holds the OpenRouter key so the browser never sees it.
+# Many Hands Worker. Holds the OpenRouter and Resend keys so the browser never sees them.
 # The key is a secret, never a var:  npx wrangler secret put OPENROUTER_API_KEY
 name = "many-hands-chat"
 main = "src/index.js"
@@ -8,9 +8,11 @@ compatibility_date = "2026-10-01"
 # Your Firebase project ID (src/firebase.config.js > projectId). ID tokens from any other project are rejected.
 FIREBASE_PROJECT_ID = "tasks-f16b8"
 # Comma-separated origins allowed to call this Worker. Origins only: no path, no trailing slash.
-ALLOWED_ORIGINS = "https://jmiel-tech.github.io,http://localhost:5173"
+ALLOWED_ORIGINS = "https://jmiel-tech.github.io,http://localhost:5173,http://127.0.0.1:5173"
 # Sent to OpenRouter as HTTP-Referer.
 SITE_URL = "https://jmiel-tech.github.io/many-hands/"
+# Must be a sender address verified in Resend.
+SUPPORT_FROM_EMAIL = "Many Hands Support <support@YOUR_VERIFIED_DOMAIN>"
 
 # Per-user rate limit counters (created with: npx wrangler kv namespace create RATE_LIMIT).
 # The id only names the store in your Cloudflare account; it isn't a secret.
