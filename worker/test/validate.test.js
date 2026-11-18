@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_MESSAGES, MAX_TOOL_CALLS, MAX_TOTAL_CHARS, allowedOrigin, validateBody } from '../src/validate.js';
+import { MAX_MESSAGES, MAX_TOOL_CALLS, MAX_TOTAL_CHARS, allowedOrigin, validateBody, validateSupportEmail } from '../src/validate.js';
 import { TOOL_NAMES } from '../src/tools.js';
 
 const user = (content = 'hi') => ({ role: 'user', content });
@@ -29,12 +29,22 @@ test('requires the last message to come from the user', () => {
   assert.ok(validateBody({ messages: [user(), { role: 'assistant', content: 'x' }] }).error);
 });
 test('allows only listed origins', () => {
-  const list = 'https://jmiel-tech.github.io, http://localhost:5173';
+  const list = 'https://jmiel-tech.github.io, http://localhost:5173, http://127.0.0.1:5173';
   assert.equal(allowedOrigin('http://localhost:5173', list), 'http://localhost:5173');
+  assert.equal(allowedOrigin('http://127.0.0.1:5173', list), 'http://127.0.0.1:5173');
   assert.equal(allowedOrigin('https://jmiel-tech.github.io', list), 'https://jmiel-tech.github.io');
   assert.equal(allowedOrigin('https://evil.example', list), null);
   assert.equal(allowedOrigin('https://jmiel-tech.github.io.evil.example', list), null);
   assert.equal(allowedOrigin(null, list), null);
+});
+test('validates support email fields', () => {
+  const result = validateSupportEmail({ email: ' person@example.com ', subject: ' Need help ', message: ' Please help. ' });
+  assert.deepEqual(result, { email: 'person@example.com', subject: 'Need help', message: 'Please help.' });
+  assert.ok(validateSupportEmail({ email: 'bad', subject: 'Help', message: 'Text' }).error);
+  assert.ok(validateSupportEmail({ email: 'person@example.com', subject: ' ', message: 'Text' }).error);
+  assert.ok(validateSupportEmail({ email: 'person@example.com', subject: 'Help', message: ' ' }).error);
+  assert.ok(validateSupportEmail({ email: 'person@example.com', subject: 'x'.repeat(161), message: 'Text' }).error);
+  assert.ok(validateSupportEmail({ email: 'person@example.com', subject: 'Help', message: 'x'.repeat(5001) }).error);
 });
 
 const call = (id, name = 'take_task', args = '{"task_id":"t1"}') => ({ id, type: 'function', function: { name, arguments: args } });

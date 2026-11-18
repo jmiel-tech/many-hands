@@ -67,6 +67,22 @@ export function validateBody(body) {
   return { messages: clean };
 }
 
+export function validateSupportEmail(body) {
+  const email = body?.email;
+  const subject = body?.subject;
+  const message = body?.message;
+  if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return { error: 'Enter a valid reply email.' };
+  }
+  if (typeof subject !== 'string' || !subject.trim() || subject.trim().length > 160) {
+    return { error: 'Enter a subject up to 160 characters.' };
+  }
+  if (typeof message !== 'string' || !message.trim() || message.trim().length > 5000) {
+    return { error: 'Enter a message up to 5000 characters.' };
+  }
+  return { email: email.trim(), subject: subject.trim(), message: message.trim() };
+}
+
 export function allowedOrigin(origin, allowList) {
   if (!origin) return null;
   const allowed = String(allowList || '').split(',').map((s) => s.trim()).filter(Boolean);

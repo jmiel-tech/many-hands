@@ -13,6 +13,7 @@ const LINKS = [
   { to: '/members', label: 'Members', icon: Icons.members },
   { to: '/messages', label: 'Messages', icon: Icons.messages },
   { to: '/chat', label: 'Chat', icon: Icons.chat },
+  { to: '/help', label: 'Help', icon: Icons.help },
   { to: '/me', label: 'Me', icon: Icons.me },
 ];
 const ADMIN_LINK = { to: '/admin', label: 'Admin', icon: Icons.admin };

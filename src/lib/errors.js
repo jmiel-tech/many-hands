@@ -17,6 +17,9 @@ const MESSAGES = {
   'app/invalid-conversation': 'This conversation could not be opened.',
   'app/invalid-chat-message': 'Enter a message up to 2000 characters.',
   'app/chat-not-allowed': "You can't send messages in this conversation.",
+  'support/invalid': 'Check the email, subject, and message, then try again.',
+  'support/rate-limited': 'Too many messages were sent. Please wait a while and try again.',
+  'support/unavailable': "The support email service isn't available right now. Please try again later.",
 };
 
 export function friendlyError(error) {
@@ -27,18 +30,21 @@ export function friendlyError(error) {
 export function useAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const run = useCallback(async (action) => {
     setBusy(true);
     setError('');
+    setErrorCode('');
     try {
       return await action();
     } catch (e) {
       console.error(e);
+      setErrorCode(e?.code || '');
       setError(friendlyError(e));
       return undefined;
     } finally {
       setBusy(false);
     }
   }, []);
-  return { busy, error, setError, run };
+  return { busy, error, errorCode, setError, run };
 }
