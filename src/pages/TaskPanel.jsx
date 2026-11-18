@@ -3,7 +3,8 @@ import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import { useComments, useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
-import { addComment, deleteComment, deleteTask, updateComment, updateTask } from '../lib/api.js';
+import { addComment, deleteComment, deleteTask, leaveTask, setTaskAssignees, updateComment, updateTask } from '../lib/api.js';
+import { GROUP_MAX, holderIds, holds, isGroupTask, joinNames } from '../lib/assignees.js';
 import { TakeButton } from '../components/cards.jsx';
 import { Avatar, ConfirmRow, DueBadge, ErrorNote, Icons, LockNote, Modal, Segmented, StatusBadge, TASK_STATUS, firstName, formatWhen, workloadLabel } from '../components/ui.jsx';
 
@@ -125,15 +126,22 @@ export default function TaskPanel() {
     );
   }
 
-  const mine = task.assigneeId === user.uid;
+  // Group tasks: everyone in the group holds the task and can change it.
+  const ids = holderIds(task);
+  const group = isGroupTask(task);
+  const mine = holds(task, user.uid);
   const issueOwner = issue?.ownerId === user.uid;
   const assigneeName = task.assigneeId ? nameOf(task.assigneeId) : null;
+  const lockWho = group ? joinNames(ids.map((id) => firstName(nameOf(id)))) : firstName(assigneeName);
 
   const setStatus = (status) => run(() => updateTask(task.id, { status }));
-  const giveBack = () => run(() => updateTask(task.id, { assigneeId: null, status: 'todo' }));
-  const reassign = (e) => {
-    const assigneeId = e.target.value || null;
-    run(() => updateTask(task.id, assigneeId ? { assigneeId } : { assigneeId, status: 'todo' }));
+  // In a group, giving it back takes you out of the group and the others keep it.
+  const giveBack = () => run(() => leaveTask(task, user.uid));
+  const reassign = (e) => run(() => setTaskAssignees(task.id, e.target.value ? [e.target.value] : []));
+  const toggleGroupMember = (id) => {
+    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    if (next.length > GROUP_MAX) return;
+    run(() => setTaskAssignees(task.id, next));
   };
   const remove = () => run(async () => {
     await deleteTask(task.id);
@@ -149,7 +157,19 @@ export default function TaskPanel() {
             <DueBadge item={task} />
           </div>
           <h1>{task.title}</h1>
-          {task.assigneeId ? (
+          {group ? (
+            <div className="stack-xs">
+              <span className="field-label">Group task · {ids.length} people</span>
+              <div className="row-gap">
+                {ids.map((id) => (
+                  <Link key={id} to={id === user.uid ? '/me' : `/members/${id}`} className="assignee-chip">
+                    <Avatar id={id} name={nameOf(id)} size={36} />
+                    {id === user.uid ? 'You' : nameOf(id)}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : task.assigneeId ? (
             <Link to={mine ? '/me' : `/members/${task.assigneeId}`} className="assignee-chip">
               <Avatar id={task.assigneeId} name={assigneeName} size={36} />
               Assigned to {mine ? 'you' : assigneeName}
@@ -174,7 +194,7 @@ export default function TaskPanel() {
               {!confirming ? (
                 <div className="row-gap">
                   <Link to="edit" className="textlink">Edit task<Icons.chevron /></Link>
-                  <button type="button" className="textlink" onClick={giveBack} disabled={busy}>Give it back</button>
+                  <button type="button" className="textlink" onClick={giveBack} disabled={busy}>{group ? 'Leave the group' : 'Give it back'}</button>
                   <button type="button" className="textlink danger" onClick={() => setConfirming(true)}>Delete</button>
                 </div>
               ) : (
@@ -185,14 +205,37 @@ export default function TaskPanel() {
           )}
           {issueOwner && !mine && (
             <div className="owner-box">
-              <label className="lbl">
-                Assigned to
-                <select className="field select" value={task.assigneeId ?? ''} onChange={reassign} disabled={busy}>
-                  <option value="">Unassigned</option>
-                  {/* Member Workload Indicator */}
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.id === user.uid ? `${m.name} (you)` : m.name} {workloadLabel(activeTaskCount(m.id))}</option>)}
-                </select>
-              </label>
+              {group ? (
+                <fieldset className="assign">
+                  <legend className="field-label">In the group</legend>
+                  <div className="assign-list">
+                    {members.map((m) => (
+                      <label className="assign-row" key={m.id}>
+                        <input
+                          type="checkbox"
+                          checked={ids.includes(m.id)}
+                          disabled={busy || (!ids.includes(m.id) && ids.length >= GROUP_MAX)}
+                          onChange={() => toggleGroupMember(m.id)}
+                        />
+                        <Avatar id={m.id} name={m.name} size={34} />
+                        <span className="assign-name">
+                          {/* Member Workload Indicator */}
+                          {m.id === user.uid ? `${m.name} (you)` : m.name} {workloadLabel(activeTaskCount(m.id))}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : (
+                <label className="lbl">
+                  Assigned to
+                  <select className="field select" value={task.assigneeId ?? ''} onChange={reassign} disabled={busy}>
+                    <option value="">Unassigned</option>
+                    {/* Member Workload Indicator */}
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.id === user.uid ? `${m.name} (you)` : m.name} {workloadLabel(activeTaskCount(m.id))}</option>)}
+                  </select>
+                </label>
+              )}
               {!confirming ? (
                 <div className="row-gap">
                   <button type="button" className="textlink danger" onClick={() => setConfirming(true)}>Delete</button>
@@ -204,7 +247,7 @@ export default function TaskPanel() {
             </div>
           )}
           {!issueOwner && !mine && task.assigneeId && (
-            <div className="lock-box"><LockNote>Only {firstName(assigneeName)} can edit, update or delete this task.</LockNote></div>
+            <div className="lock-box"><LockNote>Only {lockWho} can edit, update or delete this task.</LockNote></div>
           )}
           {!issueOwner && !task.assigneeId && (
             <div className="lock-box"><LockNote>Whoever takes this task can edit or delete it.</LockNote></div>

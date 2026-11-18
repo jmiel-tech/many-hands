@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
@@ -6,6 +5,7 @@ import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createTask, updateTask } from '../lib/api.js';
 import { hasUnsavedChanges } from '../lib/forms.js';
+import { GROUP_MAX, assigneeFields, holderIds, holderNames, holds, isGroupTask, joinNames } from '../lib/assignees.js';
 import {
   Avatar,
   ConfirmRow,
@@ -34,6 +34,11 @@ export default function TaskForm() {
   const [assigneeId, setAssigneeId] = useState(task?.assigneeId ?? '');
   const [dueDate, setDueDate] = useState(task?.dueDate || '');
 
+  // Group task: when on, several people can be picked and all of them hold this one task.
+  const [group, setGroup] = useState(isGroupTask(task));
+  const [groupIds, setGroupIds] = useState(isGroupTask(task) ? holderIds(task) : []);
+  const [groupError, setGroupError] = useState('');
+
   // Software Change 2:
   // Track whether the user clicked Clear date.
   const [dateCleared, setDateCleared] = useState(false);
@@ -47,6 +52,8 @@ export default function TaskForm() {
     status,
     assigneeId,
     dueDate,
+    group,
+    groupIds: groupIds.join(','),
   };
 
   const initial = useRef(current).current;
@@ -64,17 +71,19 @@ export default function TaskForm() {
   const requestClose = () =>
     dirty ? setDiscarding(true) : close();
 
-  // Only the assigned user can edit an existing task.
-  if (isEdit && task?.assigneeId !== user.uid) {
+  // Only the assigned user (or, for a group task, anyone in the group) can edit an existing task.
+  if (isEdit && !holds(task, user.uid)) {
     return (
       <Modal title="Edit task" onClose={close}>
         <FormHead title="Not yours to edit." />
 
         <div className="form">
           <LockNote>
-            {task?.assigneeId
-              ? `Only ${firstName(nameOf(task.assigneeId))} can edit this task.`
-              : 'Take this task first, then you can edit it.'}
+            {!task?.assigneeId
+              ? 'Take this task first, then you can edit it.'
+              : isGroupTask(task)
+                ? `Only ${joinNames(holderIds(task).map((id) => firstName(nameOf(id))))} can edit this group task.`
+                : `Only ${firstName(nameOf(task.assigneeId))} can edit this task.`}
           </LockNote>
         </div>
       </Modal>
@@ -86,13 +95,30 @@ export default function TaskForm() {
     (a, b) => (b.id === user.uid) - (a.id === user.uid)
   );
 
-  const unassigned = assigneeId === '';
+  const unassigned = group ? groupIds.length === 0 : assigneeId === '';
+
+  // Group task: everyone picked holds the task; otherwise it's the one person picked, or nobody.
+  const pickedIds = group ? groupIds : assigneeId ? [assigneeId] : [];
 
   const holder = unassigned
     ? null
-    : assigneeId === user.uid
-      ? 'you'
-      : firstName(nameOf(assigneeId));
+    : holderNames({ assigneeIds: pickedIds }, user.uid, (id) => firstName(nameOf(id)));
+
+  // Group task: switching on keeps the person already picked; switching off keeps the first one picked.
+  const toggleGroup = () => {
+    setGroupError('');
+    if (group) {
+      setAssigneeId(groupIds[0] ?? '');
+    } else {
+      setGroupIds(assigneeId ? [assigneeId] : []);
+    }
+    setGroup(!group);
+  };
+
+  const toggleInGroup = (id) => {
+    setGroupError('');
+    setGroupIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  };
 
   // Software Change 2:
   // Clear the date locally and explain that saving is required.
@@ -111,10 +137,18 @@ export default function TaskForm() {
   const submit = (e) => {
     e.preventDefault();
 
+    if (group && groupIds.length < 2) {
+      setGroupError('Pick at least two people for a group task.');
+      return;
+    }
+    if (group && groupIds.length > GROUP_MAX) {
+      setGroupError(`A group task can have up to ${GROUP_MAX} people.`);
+      return;
+    }
+
     const values = {
       title: title.trim(),
       description: description.trim(),
-      assigneeId: assigneeId || null,
       dueDate: dueDate || null,
 
       // An unassigned task cannot be underway.
@@ -123,13 +157,14 @@ export default function TaskForm() {
 
     run(async () => {
       if (isEdit) {
-        await updateTask(taskId, values);
+        await updateTask(taskId, { ...values, ...assigneeFields(pickedIds) });
 
         // Return to the task details after saving.
         close();
       } else {
         const id = await createTask(user.uid, {
           ...values,
+          assigneeIds: pickedIds,
           issueId: routeIssueId,
         });
 
@@ -147,7 +182,9 @@ export default function TaskForm() {
         title={isEdit ? 'Edit task.' : 'New task.'}
         subtitle={
           isEdit
-            ? "It's assigned to you, so it's yours to change."
+            ? isGroupTask(task)
+              ? "You're in this task's group, so it's yours to change."
+              : "It's assigned to you, so it's yours to change."
             : 'Add something the group needs done.'
         }
       />
@@ -239,40 +276,57 @@ export default function TaskForm() {
           />
         )}
 
+        {/* Group task toggle: on lets several people hold this one task together. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={group}
+          className="theme-toggle"
+          onClick={toggleGroup}
+        >
+          <span className="assign-name">
+            Group task
+            <small>{group ? 'Assign it to several people' : 'Off: assign it to one person'}</small>
+          </span>
+          <span className="switch" aria-hidden="true" />
+        </button>
+
         <fieldset className="assign">
           <legend className="field-label">
-            Assign to
+            {group ? 'Pick everyone in the group' : 'Assign to'}
           </legend>
 
           <div className="assign-list">
-            <label className="assign-row">
-              <input
-                type="radio"
-                name="assignee"
-                checked={unassigned}
-                onChange={() => setAssigneeId('')}
-              />
+            {!group && (
+              <label className="assign-row">
+                <input
+                  type="radio"
+                  name="assignee"
+                  checked={unassigned}
+                  onChange={() => setAssigneeId('')}
+                />
 
-              <span
-                className="avatar avatar-none"
-                aria-hidden="true"
-              >
-                ?
-              </span>
+                <span
+                  className="avatar avatar-none"
+                  aria-hidden="true"
+                >
+                  ?
+                </span>
 
-              <span className="assign-name">
-                Leave unassigned
-                <small>Anyone can take it</small>
-              </span>
-            </label>
+                <span className="assign-name">
+                  Leave unassigned
+                  <small>Anyone can take it</small>
+                </span>
+              </label>
+            )}
 
             {people.map((p) => (
               <label className="assign-row" key={p.id}>
                 <input
-                  type="radio"
+                  type={group ? 'checkbox' : 'radio'}
                   name="assignee"
-                  checked={assigneeId === p.id}
-                  onChange={() => setAssigneeId(p.id)}
+                  checked={group ? groupIds.includes(p.id) : assigneeId === p.id}
+                  onChange={() => (group ? toggleInGroup(p.id) : setAssigneeId(p.id))}
                 />
 
                 <Avatar
@@ -292,11 +346,25 @@ export default function TaskForm() {
               </label>
             ))}
           </div>
+
+          {group && (
+            <span className="hint" role="status">
+              {groupIds.length} {groupIds.length === 1 ? 'person' : 'people'} picked. A group task needs at least two.
+            </span>
+          )}
         </fieldset>
+
+        <ErrorNote>{groupError}</ErrorNote>
 
         <p className="note-box">
           {unassigned ? (
             'You can create a task for anyone. Whoever takes this one can then edit it, change its status, or delete it.'
+          ) : group ? (
+            <>
+              You can create a task for anyone. Once it's saved,
+              anyone in the group (<strong>{holder}</strong>) can edit it,
+              change its status, or delete it.
+            </>
           ) : (
             <>
               You can create a task for anyone. Once it's saved,

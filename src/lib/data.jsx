@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { holds } from './assignees.js';
 
 const DataContext = createContext(null);
 export const useData = () => useContext(DataContext);
@@ -36,7 +37,7 @@ export function DataProvider({ children }) {
       tasksFor: (issueId) => (tasks || []).filter((t) => t.issueId === issueId),
       nameOf: (id) => memberById.get(id)?.name || 'A former member',
       // Member Workload Indicator: tasks a member holds across all issues, not counting finished ones.
-      activeTaskCount: (id) => (tasks || []).filter((t) => t.assigneeId === id && t.status !== 'done').length,
+      activeTaskCount: (id) => (tasks || []).filter((t) => holds(t, id) && t.status !== 'done').length,
     };
   }, [members, issues, tasks]);
 

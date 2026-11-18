@@ -5,6 +5,7 @@ import { useData } from '../lib/data.jsx';
 import { isISODate, isMonthKey, isOverdue, monthDays, parseLocal, shiftMonth, todayISO } from '../lib/dates.js';
 import { TopBar } from '../components/Layout.jsx';
 import { taskPath } from '../components/cards.jsx';
+import { holderNames } from '../lib/assignees.js';
 import { Icons, StatusBadge } from '../components/ui.jsx';
 
 // Jan 1 2023 was a Sunday, so these come out Sun to Sat in the viewer's language.
@@ -78,7 +79,7 @@ function AgendaRow({ entry }) {
   const who = (id) => (id === user.uid ? 'you' : nameOf(id));
   const detail = kind === 'issue'
     ? `Owner: ${who(item.ownerId)}`
-    : `Part of ${issue.title} · ${item.assigneeId ? `Assigned to ${who(item.assigneeId)}` : 'No one yet'}`;
+    : `Part of ${issue.title} · ${item.assigneeId ? `Assigned to ${holderNames(item, user.uid, nameOf)}` : 'No one yet'}`;
   return (
     <li>
       <Link to={to} className="card agenda-row">

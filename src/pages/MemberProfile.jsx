@@ -6,6 +6,7 @@ import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard } from '../components/cards.jsx';
 import { Avatar, ErrorNote, Icons, LockNote, firstName } from '../components/ui.jsx';
 import { bySoonestDue } from '../lib/dates.js';
+import { holds } from '../lib/assignees.js';
 import { displayPhone, phoneDigits, phoneHref } from '../lib/phone.js';
 import { openConversation } from '../lib/chat.js';
 import { useAction } from '../lib/errors.js';
@@ -50,7 +51,7 @@ export default function MemberProfile() {
   const email = typeof member.email === 'string' ? member.email.trim() : '';
   const hasPhone = phoneDigits(member.phone).length === 10;
   const theirIssues = issues.filter((i) => i.ownerId === member.id);
-  const theirTasks = tasks.filter((t) => t.assigneeId === member.id).sort(bySoonestDue);
+  const theirTasks = tasks.filter((t) => holds(t, member.id)).sort(bySoonestDue);
   const startConversation = () => run(async () => {
     const conversationId = await openConversation(user.uid, member.id);
     navigate(`/messages/${conversationId}`);

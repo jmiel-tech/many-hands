@@ -2,6 +2,7 @@
 // It acts as the signed-in member, so the Firestore rules still decide in the end. The checks here mirror
 // those rules so the assistant can refuse up front, say why, and offer something the member can do instead.
 import { addComment, deleteComment, takeTask, updateTask } from '../lib/api.js';
+import { assigneeFields, holderNames, holds, isGroupTask } from '../lib/assignees.js';
 
 export const TASK_STATUS = { todo: 'To do', doing: 'Doing', done: 'Done' };
 export const READ_TOOLS = new Set(['find_tasks']);
@@ -21,7 +22,7 @@ export function parseArgs(raw) {
 // ctx: { uid, tasks, issues, nameOf }
 const findTask = (ctx, id) => (typeof id === 'string' ? ctx.tasks.find((t) => t.id === id) : undefined);
 const issueOf = (ctx, task) => ctx.issues.find((i) => i.id === task.issueId);
-const holderName = (ctx, task) => (task.assigneeId === ctx.uid ? 'you' : task.assigneeId ? ctx.nameOf(task.assigneeId) : 'no one');
+const holderName = (ctx, task) => holderNames(task, ctx.uid, ctx.nameOf) || 'no one';
 export const taskPath = (task) => `/issues/${task.issueId}/tasks/${task.id}`;
 
 const commentInstead = (title, who) => ({
@@ -39,7 +40,7 @@ export function findTasks(args, ctx) {
     const issue = issueOf(ctx, task);
     if (!issue) continue; // left behind by a deleted issue; nobody can open it
     if (scope === 'needs_someone' && (task.assigneeId || task.status === 'done')) continue;
-    if (scope === 'mine' && task.assigneeId !== ctx.uid) continue;
+    if (scope === 'mine' && !holds(task, ctx.uid)) continue;
     if (status && task.status !== status) continue;
     const text = `${task.title} ${task.description || ''} ${issue.title}`.toLowerCase();
     if (query && !text.includes(query)) continue;
@@ -64,14 +65,15 @@ export function planAction(name, rawArgs, ctx) {
   if (!task) return refuse("I can't find that task. It may have been deleted.");
   if (!issueOf(ctx, task)) return refuse("That task's issue was deleted, so it can't be changed any more.");
   const base = { taskId: task.id, issueId: task.issueId, title: task.title };
-  const holder = task.assigneeId ? ctx.nameOf(task.assigneeId) : null;
+  const holder = task.assigneeId ? holderNames(task, ctx.uid, ctx.nameOf) : null;
+  const firstHolder = task.assigneeId ? ctx.nameOf(task.assigneeId) : null;
 
   if (name === 'take_task') {
-    if (task.assigneeId === ctx.uid) return refuse(`“${task.title}” is already yours.`);
+    if (holds(task, ctx.uid)) return refuse(`“${task.title}” is already yours.`);
     if (task.assigneeId) {
       return refuse(
-        `${holder} already holds “${task.title}”. Only the person holding a task can change it.`,
-        commentInstead(task.title, holder.split(' ')[0]),
+        `${holder} already ${isGroupTask(task) ? 'hold' : 'holds'} “${task.title}”. Only the people holding a task can change it.`,
+        commentInstead(task.title, firstHolder.split(' ')[0]),
       );
     }
     return {
@@ -92,10 +94,10 @@ export function planAction(name, rawArgs, ctx) {
         { label: 'Take it first', draft: `Take “${task.title}”` },
       );
     }
-    if (task.assigneeId !== ctx.uid) {
+    if (!holds(task, ctx.uid)) {
       return refuse(
         `Only ${holder} can change “${task.title}”, because they hold it.`,
-        commentInstead(task.title, holder.split(' ')[0]),
+        commentInstead(task.title, firstHolder.split(' ')[0]),
       );
     }
     if (task.status === next) return refuse(`“${task.title}” is already ${TASK_STATUS[next]}.`);
@@ -151,7 +153,7 @@ export async function runAction(action, ctx) {
 // Undo, also through the existing functions: the same calls as "Give it back", the status control, and deleting a comment.
 export async function undoAction(action) {
   const { kind, taskId, undo } = action;
-  if (kind === 'take') await updateTask(taskId, { assigneeId: null, status: undo.prevStatus });
+  if (kind === 'take') await updateTask(taskId, { ...assigneeFields([]), status: undo.prevStatus });
   else if (kind === 'status') await updateTask(taskId, { status: undo.prevStatus });
   else if (kind === 'comment') await deleteComment(undo.commentId);
   else throw new Error('unknown action');
