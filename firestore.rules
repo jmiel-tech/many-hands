@@ -80,8 +80,17 @@ service cloud.firestore {
     }
 
     // ---- members/{uid} ----
+    // photo is optional: a small square picture saved as a JPEG, PNG or WebP data URL (see src/lib/photo.js).
+    function validPhoto() {
+      return !('photo' in incoming())
+        || (incoming().photo is string
+            && incoming().photo.size() <= 100000
+            && incoming().photo.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$'));
+    }
     function validMember() {
-      return hasExactly(['name', 'email', 'phone', 'createdAt'])
+      return incoming().keys().hasAll(['name', 'email', 'phone', 'createdAt'])
+        && incoming().keys().hasOnly(['name', 'email', 'phone', 'createdAt', 'photo'])
+        && validPhoto()
         && isText(incoming().name, 1, 80)
         && isText(incoming().email, 3, 254)
         && incoming().phone is string

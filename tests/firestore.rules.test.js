@@ -136,6 +136,34 @@ test('member phone must be a 10-digit number in (555) 123-4567 format', async ()
   await assertSucceeds(setDoc(doc(db, 'members/carol'), member('carol', { phone: '(555) 123-4567' })));
 });
 
+// ---- member profile pictures ----
+const tinyPhoto = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQ==';
+
+test('owner can add, change and remove their own profile picture', async () => {
+  const ref = doc(asUser('alice'), 'members/alice');
+  await assertSucceeds(updateDoc(ref, { photo: tinyPhoto }));
+  await assertSucceeds(updateDoc(ref, { photo: 'data:image/png;base64,iVBORw0KGgo=' }));
+  await assertSucceeds(updateDoc(ref, { photo: deleteField() }));
+});
+test('a new member can sign up with or without a profile picture', async () => {
+  await assertSucceeds(setDoc(doc(asUser('carol'), 'members/carol'), member('carol', { photo: tinyPhoto })));
+  await assertSucceeds(setDoc(doc(asUser('dave'), 'members/dave'), member('dave')));
+});
+test('nobody can change someone else\'s profile picture', async () => {
+  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { photo: tinyPhoto }));
+  await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'members/alice'), { photo: tinyPhoto }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'members/alice'), { photo: deleteField() }));
+});
+test('profile picture must be a small JPEG, PNG or WebP data URL', async () => {
+  const ref = doc(asUser('alice'), 'members/alice');
+  await assertFails(updateDoc(ref, { photo: 'https://example.com/me.jpg' }));
+  await assertFails(updateDoc(ref, { photo: 'data:image/svg+xml;base64,PHN2Zz4=' }));
+  await assertFails(updateDoc(ref, { photo: 'data:text/html;base64,PGgxPg==' }));
+  await assertFails(updateDoc(ref, { photo: 'data:image/jpeg;base64,<script>' }));
+  await assertFails(updateDoc(ref, { photo: 42 }));
+  await assertFails(updateDoc(ref, { photo: `data:image/jpeg;base64,${'A'.repeat(100000)}` }));
+});
+
 // ---- issues ----
 test('anyone signed in can create an issue they own', async () => {
   await assertSucceeds(setDoc(doc(asUser('bob'), 'issues/new'), issue('bob')));

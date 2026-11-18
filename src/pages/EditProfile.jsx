@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { deleteField } from 'firebase/firestore';
 import { auth } from '../firebase.js';
 import { useAuth } from '../lib/auth.jsx';
 import { friendlyError, useAction } from '../lib/errors.js';
 import { updateMember } from '../lib/api.js';
 import { formatPhone } from '../lib/phone.js';
+import { makeProfilePhoto, photoProblem } from '../lib/photo.js';
 import { Avatar, ErrorNote, FormHead, Modal, PhoneInput } from '../components/ui.jsx';
 
 export default function EditProfile() {
@@ -16,9 +18,40 @@ export default function EditProfile() {
   const [password, setPassword] = useState('');
   const [needsPassword, setNeedsPassword] = useState(false);
   const [notice, setNotice] = useState('');
+  // The picture shown in the preview. null means no picture. It's only saved when Save is pressed.
+  const [photo, setPhoto] = useState(member.photo ?? null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileInput = useRef(null);
   const { busy, error, setError, run } = useAction();
 
   const close = () => navigate('/me');
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // so picking the same file again still triggers a change
+    if (!file) return;
+    const problem = photoProblem(file);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError('');
+    setPhotoBusy(true);
+    try {
+      setPhoto(await makeProfilePhoto(file));
+    } catch (err) {
+      console.error(err);
+      setError("We couldn't read that picture. Try a JPG or PNG.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  // Only send the photo when it changed. Removing it deletes the field from the profile.
+  const photoPatch = () => {
+    if (photo === (member.photo ?? null)) return {};
+    return { photo: photo ?? deleteField() };
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -44,7 +77,7 @@ export default function EditProfile() {
           return;
         }
       }
-      await updateMember(user.uid, { name: name.trim(), phone: phone.trim(), email: auth.currentUser.email });
+      await updateMember(user.uid, { name: name.trim(), phone: phone.trim(), email: auth.currentUser.email, ...photoPatch() });
       if (emailResult === 'verification-sent') {
         setNeedsPassword(false);
         setPassword('');
@@ -59,7 +92,18 @@ export default function EditProfile() {
   return (
     <Modal title="Edit profile" onClose={close}>
       <div className="form-head">
-        <Avatar id={user.uid} name={member.name} size={72} />
+        <Avatar id={user.uid} name={member.name} size={72} photo={photo} />
+        <input ref={fileInput} type="file" accept="image/*" hidden onChange={pickPhoto} />
+        <div className="photo-actions">
+          <button type="button" className="pill pill-sm pill-plain" disabled={busy || photoBusy} onClick={() => fileInput.current?.click()}>
+            {photoBusy ? 'Loading…' : photo ? 'Change photo' : 'Upload photo'}
+          </button>
+          {photo && (
+            <button type="button" className="pill pill-sm pill-plain" disabled={busy || photoBusy} onClick={() => setPhoto(null)}>
+              Remove photo
+            </button>
+          )}
+        </div>
       </div>
       <FormHead title="Your details." subtitle="Only you can change these. Other members see them in the directory." />
       <form className="form" aria-label="Edit profile" onSubmit={submit}>

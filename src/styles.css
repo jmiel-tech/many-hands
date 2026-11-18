@@ -50,6 +50,8 @@ button:disabled { cursor: default; opacity: 0.6; }
 .avatar-tone-2 { background: var(--avatar-2-bg); color: var(--avatar-2-fg); }
 .avatar-tone-3 { background: var(--avatar-3-bg); color: var(--avatar-3-fg); }
 .avatar-tone-4 { background: var(--avatar-4-bg); color: var(--avatar-4-fg); }
+.avatar-photo { display: block; object-fit: cover; background: var(--todo-bg); }
+.photo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
 .avatar-none { width: 34px; height: 34px; background: var(--todo-bg); color: var(--ink-2); font-size: 13px; }
 
 /* ---- Buttons and links ---- */

@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { formatDue, isOverdue } from '../lib/dates.js';
 import { PHONE_PATTERN, PHONE_PLACEHOLDER, formatPhone } from '../lib/phone.js';
+import { useData } from '../lib/data.jsx';
+import { isPhoto } from '../lib/photo.js';
 
 export const TASK_STATUS = { todo: 'To do', doing: 'Doing', done: 'Done' };
 export const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
@@ -62,7 +64,26 @@ export function Logo({ size = 26 }) {
 // Five color pairs, defined per theme in theme.css (--avatar-N-bg / --avatar-N-fg).
 const AVATAR_TONES = 5;
 
-export function Avatar({ id = '', name = '', size = 36 }) {
+// Shows the member's profile picture when they have one, and their initials otherwise.
+// The photo is looked up from the member list by id, so every page gets it automatically.
+// Pass `photo` to override that (Edit profile uses it to preview a picture before saving;
+// null there means "show initials").
+export function Avatar({ id = '', name = '', size = 36, photo }) {
+  const data = useData();
+  const src = photo === undefined ? data?.memberById.get(id)?.photo : photo;
+  if (isPhoto(src)) {
+    return (
+      <img
+        className="avatar avatar-photo"
+        src={src}
+        alt=""
+        aria-hidden="true"
+        width={size}
+        height={size}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   const initials = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
   const hash = [...id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   return (
