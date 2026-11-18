@@ -4,6 +4,7 @@ import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { issueHealth } from '../lib/health.js';
 import { takeTask } from '../lib/api.js';
+import { holderIds, holderNames, holds, isGroupTask, joinNames } from '../lib/assignees.js';
 import { DueBadge, ErrorNote, HealthBadge, ISSUE_STATUS, LockNote, StatusBadge, firstName } from './ui.jsx';
 
 const BAR_COLOR = { Covered: 'var(--covered-fg)', Thin: 'var(--bar-thin)', 'At risk': 'var(--risk-fg)', Orphaned: 'var(--orphan-fg)' };
@@ -44,8 +45,11 @@ export function OpenTaskCard({ task, issueTitle, large }) {
 export function HeldTaskCard({ task }) {
   const { user } = useAuth();
   const { nameOf } = useData();
-  const mine = task.assigneeId === user.uid;
-  const name = nameOf(task.assigneeId);
+  // Group tasks: everyone in the group sees it as theirs.
+  const mine = holds(task, user.uid);
+  const group = isGroupTask(task);
+  const names = holderNames(task, user.uid, nameOf);
+  const lockWho = joinNames(holderIds(task).map((id) => firstName(nameOf(id))));
   return (
     <article className={`card task-card${mine ? ' is-mine' : ''}`}>
       <div className="row-between">
@@ -53,15 +57,16 @@ export function HeldTaskCard({ task }) {
         {mine ? <span className="badge tone-accent">Yours</span> : <StatusBadge status={task.status} />}
       </div>
       <DueBadge item={task} />
+      {group && <span className="muted-sm">Group task · {holderIds(task).length} people</span>}
       {mine ? (
         <>
-          <span className="muted">{TASK_LABEL[task.status]}</span>
+          <span className="muted">{TASK_LABEL[task.status]}{group && ` · ${names}`}</span>
           <span className="accent-text">Open, edit or comment ›</span>
         </>
       ) : (
         <>
-          <span className="muted">{name}</span>
-          <LockNote>Only {firstName(name)} can edit this.</LockNote>
+          <span className="muted">{names}</span>
+          <LockNote>Only {lockWho} can edit this.</LockNote>
         </>
       )}
     </article>

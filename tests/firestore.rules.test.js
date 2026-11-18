@@ -324,6 +324,74 @@ test('a member who does not own the issue still cannot reassign or delete', asyn
   await assertFails(deleteDoc(doc(asUser('alice'), 'tasks/other')));
 });
 
+// ---- group tasks (assigneeIds lists every holder; assigneeId is always its first entry) ----
+const group = (createdBy, ids, extra = {}) => task(createdBy, ids[0] ?? null, { assigneeIds: ids, ...extra });
+// carol owns issue2; bob and root hold the group task on it.
+const seedGroup = () => env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'members/carol'), member('carol', { createdAt: when }));
+  await setDoc(doc(ctx.firestore(), 'issues/issue2'), issue('carol', { createdAt: when }));
+  await setDoc(doc(ctx.firestore(), 'tasks/group'), group('carol', ['bob', 'root'], { issueId: 'issue2', createdAt: when }));
+});
+
+test('group: any member can create a task for a group, or with an empty list for no one', async () => {
+  const db = asUser('alice');
+  await assertSucceeds(setDoc(doc(db, 'tasks/g1'), group('alice', ['bob', 'root'])));
+  await assertSucceeds(setDoc(doc(db, 'tasks/g2'), group('alice', ['alice'])));
+  await assertSucceeds(setDoc(doc(db, 'tasks/g3'), group('alice', [])));
+});
+test('group: assigneeId must match the first entry, with no duplicates and at most 10 people', async () => {
+  const db = asUser('alice');
+  await assertFails(setDoc(doc(db, 'tasks/g1'), task('alice', 'root', { assigneeIds: ['bob', 'root'] })));
+  await assertFails(setDoc(doc(db, 'tasks/g2'), task('alice', null, { assigneeIds: ['bob'] })));
+  await assertFails(setDoc(doc(db, 'tasks/g3'), task('alice', 'bob', { assigneeIds: [] })));
+  await assertFails(setDoc(doc(db, 'tasks/g4'), group('alice', ['bob', 'bob'])));
+  await assertFails(setDoc(doc(db, 'tasks/g5'), group('alice', ['bob', ...Array.from({ length: 10 }, (_, i) => `m${i}`)])));
+  await assertFails(setDoc(doc(db, 'tasks/g6'), task('alice', 'bob', { assigneeIds: 'bob' })));
+});
+test('group: every member of the group can edit, change status and delete', async () => {
+  await seedGroup();
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/group'), { status: 'doing' }));
+  await assertSucceeds(updateDoc(doc(asUser('root'), 'tasks/group'), { title: 'Edited by root' }));
+  await assertSucceeds(deleteDoc(doc(asUser('root'), 'tasks/group')));
+});
+test('group: someone outside the group cannot edit, join, or delete it', async () => {
+  await seedGroup();
+  const db = asUser('alice');
+  await assertFails(updateDoc(doc(db, 'tasks/group'), { status: 'done' }));
+  await assertFails(updateDoc(doc(db, 'tasks/group'), { assigneeId: 'bob', assigneeIds: ['bob', 'root', 'alice'] }));
+  await assertFails(deleteDoc(doc(db, 'tasks/group')));
+});
+test('group: a member can leave, and the group keeps the rest', async () => {
+  await seedGroup();
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/group'), { assigneeId: 'root', assigneeIds: ['root'] }));
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/group'), { status: 'done' }));
+  await assertSucceeds(updateDoc(doc(asUser('root'), 'tasks/group'), { status: 'done' }));
+});
+test('group: changing assigneeId alone on a group task fails, so the two fields never disagree', async () => {
+  await seedGroup();
+  await assertFails(updateDoc(doc(asUser('bob'), 'tasks/group'), { assigneeId: 'root' }));
+});
+test('group: claiming an unassigned task sets a one-person list, never a group', async () => {
+  await seedGroup();
+  await assertSucceeds(updateDoc(doc(asUser('bob'), 'tasks/open'), { assigneeId: 'bob', assigneeIds: ['bob'] }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'tasks/open2'), task('alice', null, { createdAt: when }));
+  });
+  await assertFails(updateDoc(doc(asUser('carol'), 'tasks/open2'), { assigneeId: 'carol', assigneeIds: ['carol', 'alice'] }));
+});
+test('group: the issue owner can change who is in the group', async () => {
+  await seedGroup();
+  await assertSucceeds(updateDoc(doc(asUser('carol'), 'tasks/group'), { assigneeId: 'alice', assigneeIds: ['alice', 'bob'] }));
+  await assertSucceeds(updateDoc(doc(asUser('carol'), 'tasks/group'), { assigneeId: null, assigneeIds: [], status: 'todo' }));
+});
+test('group: an admin removing a member takes them off the group and cannot add anyone', async () => {
+  await seedGroup();
+  await assertFails(updateDoc(doc(asUser('root2'), 'tasks/group'), { title: 'Admins cannot edit content' }));
+  await assertFails(updateDoc(doc(asUser('root2'), 'tasks/group'), { assigneeId: 'bob', assigneeIds: ['bob', 'root', 'alice'] }));
+  await assertSucceeds(updateDoc(doc(asUser('root2'), 'tasks/group'), { assigneeId: 'root', assigneeIds: ['root'] }));
+});
+
+
 // ---- comments ----
 test('any member can comment as themselves', async () => {
   await assertSucceeds(setDoc(doc(asUser('bob'), 'comments/c2'), comment('bob')));

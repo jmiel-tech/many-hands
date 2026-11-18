@@ -6,6 +6,7 @@ import { TopBar } from '../components/Layout.jsx';
 import { IssueCard, MyTaskCard, OpenTaskCard } from '../components/cards.jsx';
 import { HealthBadge, Icons, firstName } from '../components/ui.jsx';
 import { bySoonestDue, isOverdue } from '../lib/dates.js';
+import { holds } from '../lib/assignees.js';
 
 function timeOfDay(date) {
   const hour = date.getHours();
@@ -26,7 +27,7 @@ export default function Home() {
   // Skips tasks left behind by a deleted issue, since nobody can open those.
   const open = tasks.filter((t) => t.status === 'todo' && !t.assigneeId && issueTitle(t.issueId)).sort(bySoonestDue);
   // What you're holding and haven't finished. Done tasks stay on the Me page.
-  const mine = tasks.filter((t) => t.assigneeId === user.uid && t.status !== 'done' && issueTitle(t.issueId)).sort(bySoonestDue);
+  const mine = tasks.filter((t) => holds(t, user.uid) && t.status !== 'done' && issueTitle(t.issueId)).sort(bySoonestDue);
   const overdue = mine.filter((t) => isOverdue(t)).length;
 
   const scrollToOpen = () => document.getElementById('h-open')?.scrollIntoView({ behavior: 'smooth' });

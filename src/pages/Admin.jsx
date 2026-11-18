@@ -7,6 +7,7 @@ import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { adminDeleteIssue, kickMember, unbanMember } from '../lib/api.js';
 import { TopBar } from '../components/Layout.jsx';
+import { holds } from '../lib/assignees.js';
 import { Avatar, ConfirmRow, ErrorNote, StatusBadge, formatWhen } from '../components/ui.jsx';
 
 // Only admins can read these two collections' full lists, so they load here rather than in DataProvider.
@@ -23,11 +24,11 @@ function useCollectionIds(name) {
   return rows;
 }
 
-function MemberRow({ member, isSelf, isOtherAdmin, heldTaskIds }) {
+function MemberRow({ member, isSelf, isOtherAdmin, heldTasks }) {
   const { user } = useAuth();
   const [confirming, setConfirming] = useState(false);
   const { busy, error, run } = useAction();
-  const held = heldTaskIds.length;
+  const held = heldTasks.length;
 
   return (
     <li className="admin-row">
@@ -47,11 +48,11 @@ function MemberRow({ member, isSelf, isOtherAdmin, heldTaskIds }) {
       </div>
       {confirming && (
         <ConfirmRow
-          question={`Remove ${member.name}? They won't be able to use the app.${held ? ` Their ${held} ${held === 1 ? 'task goes' : 'tasks go'} back to Unclaimed.` : ''}`}
+          question={`Remove ${member.name}? They won't be able to use the app.${held ? ` They'll be taken off ${held} ${held === 1 ? 'task' : 'tasks'}. Group tasks stay with the rest of the group; the others go back to Unclaimed.` : ''}`}
           confirmLabel="Kick"
           cancelLabel="Cancel"
           busy={busy}
-          onConfirm={() => run(() => kickMember(user.uid, member, heldTaskIds))}
+          onConfirm={() => run(() => kickMember(user.uid, member, heldTasks))}
           onCancel={() => setConfirming(false)}
         />
       )}
@@ -143,7 +144,7 @@ export default function Admin() {
                 member={m}
                 isSelf={m.id === user.uid}
                 isOtherAdmin={m.id !== user.uid && adminIds.has(m.id)}
-                heldTaskIds={tasks.filter((t) => t.assigneeId === m.id).map((t) => t.id)}
+                heldTasks={tasks.filter((t) => holds(t, m.id))}
               />
             ))}
           </ul>

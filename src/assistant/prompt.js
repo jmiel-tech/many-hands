@@ -1,5 +1,6 @@
 // Builds the system prompt from data the app has already loaded. Community text goes in as data, not instructions.
 import { issueHealth } from '../lib/health.js';
+import { holderIds } from '../lib/assignees.js';
 import { TASK_STATUS } from './tools.js';
 
 const ISSUE_STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' };
@@ -23,7 +24,7 @@ export function buildSystemPrompt({ communityName, uid, meName, members, issues,
   const tasksFor = (issueId) => tasks.filter((t) => t.issueId === issueId);
 
   const load = new Map();
-  for (const t of tasks) if (t.assigneeId && t.status !== 'done') load.set(t.assigneeId, (load.get(t.assigneeId) || 0) + 1);
+  for (const t of tasks) if (t.status !== 'done') for (const id of holderIds(t)) load.set(id, (load.get(id) || 0) + 1);
   const memberLines = members.map((m) => `- ${clean(m.name, 60)}${m.id === uid ? ' (you)' : ''}: ${load.get(m.id) || 0} open task(s)`);
 
   const active = issues.filter((i) => i.status !== 'resolved');
@@ -37,7 +38,7 @@ export function buildSystemPrompt({ communityName, uid, meName, members, issues,
     const chunk = [
       `- Issue "${clean(issue.title, 120)}" [${ISSUE_STATUS[issue.status] || issue.status}; health: ${health.label}; ${health.assigned} of ${health.total} tasks have someone] owner: ${holder(issue.ownerId)}`,
       issue.description ? `  Description: ${clean(issue.description, 300)}` : null,
-      ...its.map((t) => `  - Task id=${t.id} "${clean(t.title, 120)}" [${TASK_STATUS[t.status] || t.status}] held by: ${holder(t.assigneeId)}${t.description ? `. ${clean(t.description, 160)}` : ''}`),
+      ...its.map((t) => `  - Task id=${t.id} "${clean(t.title, 120)}" [${TASK_STATUS[t.status] || t.status}] held by: ${holderIds(t).length > 1 ? `group of ${holderIds(t).map(holder).join(', ')}` : holder(t.assigneeId)}${t.description ? `. ${clean(t.description, 160)}` : ''}`),
     ].filter(Boolean).join('\n');
     if (size + chunk.length > PROMPT_DATA_LIMIT) {
       omitted++;
@@ -61,7 +62,7 @@ export function buildSystemPrompt({ communityName, uid, meName, members, issues,
     'Use the task id from the data. Propose each action once, with a one-sentence note on what you are proposing.',
     '',
     'Permissions. You act as the member and can only do what they could do themselves in the app:',
-    '- Only the person holding a task can change, give back or delete it, except that an issue\'s owner can also reassign or delete any task on their issue. Anyone can take a task nobody holds.',
+    '- Only the person holding a task (or anyone in its group, for a group task) can change, give back or delete it, except that an issue\'s owner can also reassign or delete any task on their issue. Anyone can take a task nobody holds.',
     '- Only an issue\'s owner can edit or delete it. Anyone can comment on any task.',
     'If asked for something the member can\'t do (change a task someone else holds, take a task someone already holds, assign a task to someone else, edit an issue they don\'t own), don\'t call a tool. Say no, explain the rule in one sentence, and offer an alternative, such as leaving a comment for the person who holds it.',
     'If asked for something the member can do but you don\'t handle (creating or deleting issues or tasks, editing a task\'s title or description, giving a task back), say so and point them to the screen where they can do it.',

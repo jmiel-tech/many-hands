@@ -8,13 +8,14 @@ import { Avatar, Icons, ThemeSwitch, firstName } from '../components/ui.jsx';
 import { useTheme } from '../lib/theme.jsx';
 import { DetailRows } from './MemberProfile.jsx';
 import { bySoonestDue } from '../lib/dates.js';
+import { holds } from '../lib/assignees.js';
 
 export default function Me() {
   const { user, member, isAdmin, logOut } = useAuth();
   const { dark, toggle } = useTheme();
   const { issues, tasks } = useData();
   const myIssues = issues.filter((i) => i.ownerId === user.uid);
-  const myTasks = tasks.filter((t) => t.assigneeId === user.uid).sort(bySoonestDue);
+  const myTasks = tasks.filter((t) => holds(t, user.uid)).sort(bySoonestDue);
 
   return (
     <>

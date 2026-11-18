@@ -9,6 +9,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { assigneeFields, holderIds } from './assignees.js';
 
 // Firestore queues writes while offline and their promises never settle, which would
 // leave buttons spinning. Fail straight away instead, so two people can't both "take" a task.
@@ -50,14 +51,15 @@ export async function deleteIssue(id) {
   await deleteDoc(doc(db, 'issues', id));
 }
 
-export async function createTask(uid, { issueId, title, description, status, assigneeId, dueDate }) {
+// assigneeIds: one id for a single person, several for a group task, none for unassigned.
+export async function createTask(uid, { issueId, title, description, status, assigneeIds, dueDate }) {
   requireOnline();
   const ref = await addDoc(collection(db, 'tasks'), {
     issueId,
     title,
     description,
     status,
-    assigneeId,
+    ...assigneeFields(assigneeIds),
     dueDate: dueDate || null,
     createdBy: uid,
     createdAt: serverTimestamp(),
@@ -73,7 +75,7 @@ export async function updateTask(id, patch) {
 export async function takeTask(id, uid) {
   requireOnline();
   try {
-    await updateDoc(doc(db, 'tasks', id), { assigneeId: uid });
+    await updateDoc(doc(db, 'tasks', id), assigneeFields([uid]));
   } catch (e) {
     // The rules only let this fail when someone else claimed it first.
     if (e.code === 'permission-denied') {
@@ -81,6 +83,18 @@ export async function takeTask(id, uid) {
     }
     throw e;
   }
+}
+
+// Group tasks: sets who holds a task. With nobody left it goes back to To do, since an unclaimed task can't be underway.
+export async function setTaskAssignees(id, ids) {
+  requireOnline();
+  const fields = assigneeFields(ids);
+  await updateDoc(doc(db, 'tasks', id), fields.assigneeIds.length ? fields : { ...fields, status: 'todo' });
+}
+
+// Leaving a task: a group task keeps its other members; a single-person task goes back to Unclaimed.
+export async function leaveTask(task, uid) {
+  await setTaskAssignees(task.id, holderIds(task).filter((id) => id !== uid));
 }
 
 export async function deleteTask(id) {
@@ -120,9 +134,10 @@ export async function adminDeleteIssue(issueId, taskIds) {
   await batch.commit();
 }
 
-// Removes a member: records the ban, deletes their profile, and frees the tasks they held.
+// Removes a member: records the ban, deletes their profile, and takes them off the tasks they held.
+// Group tasks keep their other members; tasks nobody is left holding go back to Unclaimed.
 // Their login still exists, but the rules refuse everything they try while the ban is in place.
-export async function kickMember(adminUid, member, heldTaskIds) {
+export async function kickMember(adminUid, member, heldTasks) {
   requireOnline();
   const batch = writeBatch(db);
   batch.set(doc(db, 'bans', member.id), {
@@ -133,7 +148,9 @@ export async function kickMember(adminUid, member, heldTaskIds) {
     bannedBy: adminUid,
     createdAt: serverTimestamp(),
   });
-  heldTaskIds.forEach((id) => batch.update(doc(db, 'tasks', id), { assigneeId: null }));
+  heldTasks.forEach((task) => {
+    batch.update(doc(db, 'tasks', task.id), assigneeFields(holderIds(task).filter((id) => id !== member.id)));
+  });
   batch.delete(doc(db, 'members', member.id));
   await batch.commit();
 }
