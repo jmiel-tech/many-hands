@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createIssue, updateIssue } from '../lib/api.js';
+import { todayISO } from '../lib/dates.js';
 import { hasUnsavedChanges } from '../lib/forms.js';
 import { Avatar, ConfirmRow, ErrorNote, FormHead, ISSUE_STATUS, Modal, Segmented, firstName } from '../components/ui.jsx';
 
@@ -19,6 +20,7 @@ export default function IssueForm() {
   const [description, setDescription] = useState(issue?.description || '');
   const [status, setStatus] = useState(issue?.status || 'open');
   const [dueDate, setDueDate] = useState(issue?.dueDate || '');
+  const [dateError, setDateError] = useState('');
   const { busy, error, run } = useAction();
 
   // What the form opened with, kept so closing can tell whether anything was changed.
@@ -40,6 +42,12 @@ export default function IssueForm() {
 
   const submit = (e) => {
     e.preventDefault();
+
+    if (dueDate && dueDate < todayISO() && dueDate !== (issue?.dueDate || '')) {
+      setDateError("Due dates can't be in the past.");
+      return;
+    }
+
     const values = { title: title.trim(), description: description.trim(), status, dueDate: dueDate || null };
     run(async () => {
       if (isEdit) {
@@ -80,11 +88,12 @@ export default function IssueForm() {
           <textarea className="field" rows={4} maxLength={2000} placeholder="What's this about? Where?" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <label className="lbl">Due date
-          <input className="field" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <input className="field" type="date" min={isEdit ? undefined : todayISO()} value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDateError(''); }} />
           <span className="hint">
             Optional.{' '}
-            {dueDate && <button type="button" className="textlink small" onClick={() => setDueDate('')}>Clear date</button>}
+            {dueDate && <button type="button" className="textlink small" onClick={() => { setDueDate(''); setDateError(''); }}>Clear date</button>}
           </span>
+          {dateError && <span role="alert" className="hint danger">{dateError}</span>}
         </label>
         <Segmented label="Status" name="issue-status" options={ISSUE_STATUS} value={status} onChange={setStatus} />
         <div className="note-row">

@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useData } from '../lib/data.jsx';
 import { useAction } from '../lib/errors.js';
 import { createTask, updateTask } from '../lib/api.js';
+import { todayISO } from '../lib/dates.js';
 import { hasUnsavedChanges } from '../lib/forms.js';
 import {
   Avatar,
@@ -37,6 +38,7 @@ export default function TaskForm() {
   // Software Change 2:
   // Track whether the user clicked Clear date.
   const [dateCleared, setDateCleared] = useState(false);
+  const [dateError, setDateError] = useState('');
 
   const { busy, error, run } = useAction();
 
@@ -99,6 +101,7 @@ export default function TaskForm() {
   const clearDueDate = () => {
     setDueDate('');
     setDateCleared(true);
+    setDateError('');
   };
 
   // Software Change 2:
@@ -106,10 +109,17 @@ export default function TaskForm() {
   const changeDueDate = (e) => {
     setDueDate(e.target.value);
     setDateCleared(false);
+    setDateError('');
   };
 
   const submit = (e) => {
     e.preventDefault();
+
+    // An existing overdue date can stay, but a new one can't be moved into the past.
+    if (dueDate && dueDate < todayISO() && dueDate !== (task?.dueDate || '')) {
+      setDateError("Due dates can't be in the past.");
+      return;
+    }
 
     const values = {
       title: title.trim(),
@@ -204,6 +214,7 @@ export default function TaskForm() {
           <input
             className="field"
             type="date"
+            min={isEdit ? undefined : todayISO()}
             value={dueDate}
             onChange={changeDueDate}
           />
@@ -221,6 +232,12 @@ export default function TaskForm() {
               </button>
             )}
           </span>
+
+          {dateError && (
+            <span role="alert" className="hint danger">
+              {dateError}
+            </span>
+          )}
 
           {dateCleared && (
             <span role="status" className="hint">
