@@ -132,28 +132,48 @@ service cloud.firestore {
     }
 
     // ---- tasks/{id} ----
+    // Group tasks: assigneeIds lists everyone holding the task, and assigneeId is always its first entry
+    // (or null). Tasks saved before group tasks existed have no assigneeIds and still work.
+    function validAssignees() {
+      return !('assigneeIds' in incoming())
+        || (incoming().assigneeIds is list
+            && incoming().assigneeIds.size() <= 10
+            && incoming().assigneeIds.toSet().size() == incoming().assigneeIds.size()
+            && ((incoming().assigneeIds.size() == 0 && incoming().assigneeId == null)
+                || (incoming().assigneeIds.size() > 0 && incoming().assigneeId == incoming().assigneeIds[0])));
+    }
+    // The task's single holder, or anyone in its group.
+    function holdsTask() {
+      return existing().assigneeId == uid()
+        || (existing().get('assigneeIds', []) is list && uid() in existing().get('assigneeIds', []));
+    }
     function validTask() {
       return incoming().keys().hasAll(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt'])
-        && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'createdBy', 'createdAt', 'dueDate'])
+        && incoming().keys().hasOnly(['issueId', 'title', 'description', 'status', 'assigneeId', 'assigneeIds', 'createdBy', 'createdAt', 'dueDate'])
         && validDueDate()
         && incoming().issueId is string
         && isText(incoming().title, 1, 120)
         && isText(incoming().description, 0, 2000)
         && incoming().status in ['todo', 'doing', 'done']
         && (incoming().assigneeId == null
-            || (incoming().assigneeId is string && memberExists(incoming().assigneeId)));
+            || (incoming().assigneeId is string && memberExists(incoming().assigneeId)))
+        && validAssignees();
     }
     // Claim: an unassigned task, taken by the signed-in user, with nothing else touched.
     function isClaim() {
       return existing().assigneeId == null
         && incoming().assigneeId == uid()
-        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId']);
+        && incoming().get('assigneeIds', [uid()]) == [uid()]
+        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId', 'assigneeIds']);
     }
-    // Admin release: frees a task held by someone being removed, so it goes back to Unclaimed.
+    // Admin release: takes someone being removed off a task. A group task keeps its other members;
+    // a task nobody is left holding goes back to Unclaimed. Nobody new can be added this way.
     function isAdminRelease() {
       return isAdmin()
-        && incoming().assigneeId == null
-        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId']);
+        && validAssignees()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId', 'assigneeIds'])
+        && incoming().get('assigneeIds', []).toSet().hasOnly(existing().get('assigneeIds', []))
+        && (incoming().assigneeId == null || incoming().assigneeId in existing().get('assigneeIds', []));
     }
 
     // The owner of the issue a task belongs to.
@@ -164,7 +184,7 @@ service cloud.firestore {
     // Issue owner: can reassign (or free) any task on their issue, changing only the assignee and status.
     function isOwnerReassign() {
       return ownsTaskIssue() && validTask()
-        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId', 'status']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['assigneeId', 'assigneeIds', 'status']);
     }
 
     match /tasks/{taskId} {
@@ -176,11 +196,11 @@ service cloud.firestore {
         isClaim()
         || isAdminRelease()
         || isOwnerReassign()
-        || (existing().assigneeId == uid() && validTask()
+        || (holdsTask() && validTask()
             && unchanged('issueId') && unchanged('createdBy') && unchanged('createdAt'))
       );
       // Admins can delete tasks so they can delete an issue together with its tasks.
-      allow delete: if active() && (existing().assigneeId == uid() || ownsTaskIssue() || isAdmin());
+      allow delete: if active() && (holdsTask() || ownsTaskIssue() || isAdmin());
     }
 
     // ---- comments/{id} ----
